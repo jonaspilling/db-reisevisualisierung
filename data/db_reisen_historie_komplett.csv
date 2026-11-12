@@ -1,0 +1,16 @@
+﻿Datum;Abfahrt_Zeit;Ankunft_Zeit;Startbahnhof;Zielbahnhof;Züge;Umstiege;Zwischenhalte (Auswahl)
+14.02.2026;09:43;12:26;Frankfurt(Main)Hbf;Köln Hbf;ICE 1020;;Frankfurt(M) Flughafen Fernbf, Mainz Hbf, Koblenz Hbf, Bonn Hbf
+15.02.2026;04:28;05:48;Köln Hbf;Frankfurt(Main)Hbf;ICE 521;;Siegburg/Bonn, Montabaur, Limburg Süd, Frankfurt(M) Flughafen Fernbf
+01.05.2026;06:15;10:22;Frankfurt(Main)Hbf;Berlin Südkreuz;ICE 696;;Fulda, Eisenach, Erfurt Hbf, Leipzig Hbf, Lutherstadt Wittenberg Hbf
+03.05.2026;05:35;09:44;Berlin Südkreuz;Frankfurt(Main)Hbf;ICE 593;;Lutherstadt Wittenberg Hbf, Leipzig Hbf, Erfurt Hbf, Eisenach, Fulda
+10.06.2026;18:44;22:02;München Hbf;Frankfurt(Main)Hbf;ICE 524;;Nürnberg Hbf, Würzburg Hbf, Aschaffenburg Hbf
+22.06.2026;13:57;17:13;Frankfurt(Main)Hbf;München Hbf;ICE 627;;Aschaffenburg Hbf, Würzburg Hbf, Nürnberg Hbf
+26.06.2026;12:45;16:02;München Hbf;Frankfurt(Main)Hbf;ICE 626;;Nürnberg Hbf, Würzburg Hbf, Aschaffenburg Hbf
+10.08.2026;14:11;17:40;Frankfurt(Main)Hbf;Augsburg Hbf;ICE 1095;;Mannheim Hbf, Stuttgart Hbf, Ulm Hbf
+13.08.2026;17:46;21:02;München Hbf;Frankfurt(Main)Hbf;ICE 526;;Nürnberg Hbf, Würzburg Hbf, Aschaffenburg Hbf
+17.09.2026;11:20;14:49;Frankfurt(Main)Hbf;München Hbf;ICE 575 / ICE 565;Mögliche Zugteilung;Mannheim Hbf, Stuttgart Hbf, Ulm Hbf, Augsburg Hbf, München-Pasing
+29.09.2026;13:16;15:08;Bamberg;München Hbf;ICE 507;;Erlangen, Nürnberg Hbf, Ingolstadt Hbf
+16.10.2026;13:22;15:18;München Hbf;Innsbruck Hbf;RJ 87;;München Ost, Rosenheim, Kufstein, Wörgl Hbf, Jenbach
+09.11.2026;18:11;22:15;Frankfurt(Main)Hbf;München Hbf;ICE 1097;;Darmstadt Hbf, Bensheim, Weinheim(Bergstr)Hbf, Heidelberg Hbf, Stuttgart Hbf, Ulm Hbf, Günzburg, Augsburg Hbf, München-Pasing
+20.11.2026;08:45;16:51;München Hbf;Lille Europe;ICE 690, ICE 314, TGV 9836;Frankfurt(Main)Hbf, Bruxelles-Midi;München-Pasing, Augsburg Hbf, Ulm Hbf, Stuttgart Hbf, Mannheim Hbf, Frankfurt(Main)Hbf (Umstieg), Frankfurt(M) Flughafen Fernbf, Köln Hbf, Aachen Hbf, Liège-Guillemins, Bruxelles-Nord, Bruxelles-Midi (Umstieg)
+24.11.2026;09:09;17:16;Lille Europe;München Hbf;TGV 9890, ICE 15, ICE 597;Bruxelles-Midi, Frankfurt(Main)Hbf;Bruxelles-Midi (Umstieg), Bruxelles-Nord, Liège-Guillemins, Aachen Hbf, Köln Hbf, Frankfurt(M) Flughafen Fernbf, Frankfurt(Main)Hbf (Umstieg), Mannheim Hbf, Stuttgart Hbf, Ulm Hbf, Augsburg Hbf, München-Pasing

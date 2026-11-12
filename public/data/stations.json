@@ -1,0 +1,346 @@
+[
+  {
+    "name": "Frankfurt(Main)Hbf",
+    "coords": [
+      8.6638,
+      50.1071
+    ],
+    "visits": 13
+  },
+  {
+    "name": "München Hbf",
+    "coords": [
+      11.5583,
+      48.1403
+    ],
+    "visits": 10
+  },
+  {
+    "name": "Nürnberg Hbf",
+    "coords": [
+      11.0822,
+      49.4458
+    ],
+    "visits": 5
+  },
+  {
+    "name": "Stuttgart Hbf",
+    "coords": [
+      9.1816,
+      48.784
+    ],
+    "visits": 5
+  },
+  {
+    "name": "Ulm Hbf",
+    "coords": [
+      9.9822,
+      48.3994
+    ],
+    "visits": 5
+  },
+  {
+    "name": "Augsburg Hbf",
+    "coords": [
+      10.8856,
+      48.3654
+    ],
+    "visits": 5
+  },
+  {
+    "name": "Frankfurt(M) Flughafen Fernbf",
+    "coords": [
+      8.57,
+      50.0531
+    ],
+    "visits": 4
+  },
+  {
+    "name": "Köln Hbf",
+    "coords": [
+      6.9589,
+      50.9431
+    ],
+    "visits": 4
+  },
+  {
+    "name": "Würzburg Hbf",
+    "coords": [
+      9.9358,
+      49.8019
+    ],
+    "visits": 4
+  },
+  {
+    "name": "Aschaffenburg Hbf",
+    "coords": [
+      9.1436,
+      49.9806
+    ],
+    "visits": 4
+  },
+  {
+    "name": "Mannheim Hbf",
+    "coords": [
+      8.4689,
+      49.4797
+    ],
+    "visits": 4
+  },
+  {
+    "name": "München-Pasing",
+    "coords": [
+      11.4614,
+      48.15
+    ],
+    "visits": 4
+  },
+  {
+    "name": "Fulda",
+    "coords": [
+      9.6839,
+      50.5547
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Eisenach",
+    "coords": [
+      10.3203,
+      50.9744
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Erfurt Hbf",
+    "coords": [
+      11.0381,
+      50.9722
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Leipzig Hbf",
+    "coords": [
+      12.3819,
+      51.3455
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Lutherstadt Wittenberg Hbf",
+    "coords": [
+      12.6606,
+      51.8672
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Berlin Südkreuz",
+    "coords": [
+      13.3653,
+      52.475
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Aachen Hbf",
+    "coords": [
+      6.0914,
+      50.7678
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Liège-Guillemins",
+    "coords": [
+      5.5667,
+      50.6244
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Bruxelles-Nord",
+    "coords": [
+      4.3608,
+      50.8597
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Bruxelles-Midi",
+    "coords": [
+      4.3365,
+      50.8357
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Lille Europe",
+    "coords": [
+      3.0757,
+      50.6394
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Mainz Hbf",
+    "coords": [
+      8.2586,
+      50.0011
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Koblenz Hbf",
+    "coords": [
+      7.5889,
+      50.3511
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Bonn Hbf",
+    "coords": [
+      7.0972,
+      50.732
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Siegburg/Bonn",
+    "coords": [
+      7.2031,
+      50.7939
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Montabaur",
+    "coords": [
+      7.8253,
+      50.4447
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Limburg Süd",
+    "coords": [
+      8.0961,
+      50.3828
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Bamberg",
+    "coords": [
+      10.8994,
+      49.9008
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Erlangen",
+    "coords": [
+      11.0019,
+      49.5961
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Ingolstadt Hbf",
+    "coords": [
+      11.4372,
+      48.7444
+    ],
+    "visits": 1
+  },
+  {
+    "name": "München Ost",
+    "coords": [
+      11.6047,
+      48.1272
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Rosenheim",
+    "coords": [
+      12.1189,
+      47.8503
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Kufstein",
+    "coords": [
+      12.1661,
+      47.5831
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Wörgl Hbf",
+    "coords": [
+      12.0636,
+      47.4919
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Jenbach",
+    "coords": [
+      11.7747,
+      47.3886
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Innsbruck Hbf",
+    "coords": [
+      11.4008,
+      47.2633
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Darmstadt Hbf",
+    "coords": [
+      8.6297,
+      49.8725
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Bensheim",
+    "coords": [
+      8.6175,
+      49.6806
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Weinheim(Bergstr)Hbf",
+    "coords": [
+      8.6672,
+      49.5536
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Heidelberg Hbf",
+    "coords": [
+      8.6753,
+      49.4036
+    ],
+    "visits": 1
+  },
+  {
+    "name": "Günzburg",
+    "coords": [
+      10.2781,
+      48.4606
+    ],
+    "visits": 1
+  }
+]
