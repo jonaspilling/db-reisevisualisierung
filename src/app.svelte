@@ -28,6 +28,12 @@
     return startKey < endKey ? `${startKey}|${endKey}` : `${endKey}|${startKey}`;
   }
 
+  function getGeometryPaths(feature) {
+    if (feature.geometry.type === "LineString") return [feature.geometry.coordinates];
+    if (feature.geometry.type === "MultiLineString") return feature.geometry.coordinates;
+    return [];
+  }
+
   function getFrequencyStyle(visits, maxVisits) {
     const ratio = maxVisits > 1 ? (visits - 1) / (maxVisits - 1) : 0;
     const from = [156, 163, 175];
@@ -81,11 +87,12 @@
 
     const segmentCounts = new Map();
     routesData.features.forEach((feature) => {
-      const coordinates = feature.geometry.coordinates;
-      for (let index = 0; index < coordinates.length - 1; index += 1) {
-        const key = getSegmentKey(coordinates[index], coordinates[index + 1]);
-        segmentCounts.set(key, (segmentCounts.get(key) || 0) + 1);
-      }
+      getGeometryPaths(feature).forEach((coordinates) => {
+        for (let index = 0; index < coordinates.length - 1; index += 1) {
+          const key = getSegmentKey(coordinates[index], coordinates[index + 1]);
+          segmentCounts.set(key, (segmentCounts.get(key) || 0) + 1);
+        }
+      });
     });
 
     const maxVisits = Math.max(1, ...segmentCounts.values());
@@ -93,7 +100,7 @@
 
     routesData.features.forEach((feature) => {
       const p = feature.properties;
-      const coordinates = feature.geometry.coordinates;
+      const paths = getGeometryPaths(feature);
       const popup = `
           <strong>${p.start} &rarr; ${p.ziel}</strong><br/>
           <span>${p.datum} (${p.abfahrt} – ${p.ankunft} Uhr)</span><br/>
@@ -102,27 +109,29 @@
         `;
       const segments = [];
 
-      for (let index = 0; index < coordinates.length - 1; index += 1) {
-        const start = coordinates[index];
-        const end = coordinates[index + 1];
-        const style = getFrequencyStyle(
-          segmentCounts.get(getSegmentKey(start, end)),
-          maxVisits
-        );
-        const layer = L.polyline(
-          [
-            [start[1], start[0]],
-            [end[1], end[0]],
-          ],
-          style
-        )
-          .bindPopup(popup)
-          .on("click", () => selectTrip(p.id, false))
-          .addTo(map);
+      paths.forEach((coordinates) => {
+        for (let index = 0; index < coordinates.length - 1; index += 1) {
+          const start = coordinates[index];
+          const end = coordinates[index + 1];
+          const style = getFrequencyStyle(
+            segmentCounts.get(getSegmentKey(start, end)),
+            maxVisits
+          );
+          const layer = L.polyline(
+            [
+              [start[1], start[0]],
+              [end[1], end[0]],
+            ],
+            style
+          )
+            .bindPopup(popup)
+            .on("click", () => selectTrip(p.id, false))
+            .addTo(map);
 
-        segments.push({ layer, style });
-        allSegments.push(layer);
-      }
+          segments.push({ layer, style });
+          allSegments.push(layer);
+        }
+      });
 
       routeLayers.push({ id: p.id, segments });
     });
