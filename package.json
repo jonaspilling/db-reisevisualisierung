@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:routes": "python scripts/build_routes.py",
     "preview": "vite preview"
   },
   "dependencies": {

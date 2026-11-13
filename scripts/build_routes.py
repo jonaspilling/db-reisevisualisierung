@@ -1,7 +1,10 @@
+import hashlib
+import heapq
 import json
 import math
 import os
 import time
+
 import pandas as pd
 import requests
 
@@ -9,7 +12,17 @@ CSV_PATH = "data/db_reisen_historie_komplett.csv"
 OUT_DIR = "public/data"
 OUT_ROUTES = f"{OUT_DIR}/routes.geojson"
 OUT_STATIONS = f"{OUT_DIR}/stations.json"
-API_BASE = "https://v6.db.transport.rest"
+OVERPASS_URLS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+)
+OVERPASS_BOXES_PER_QUERY = 2
+CACHE_DIR = "data/.overpass_cache"
+FERN_SNAP_KM = 1.0  # so weit darf ein Fernverkehrsgleis vom Bahnhof entfernt sein
+S_BAHN_PENALTY = 4.0  # Kostenfaktor für reine S-Bahn-Gleise
+SIMPLIFY_TOLERANCE_DEG = 0.0002  # ca. 20 m: unsichtbar, spart ~90 % Punkte
+LOCAL_NETWORK ="data/rail_network.json"  # erzeugt von scripts/extract_rails.py
 
 # Fallback-Koordinaten [lon, lat] für alle 43 Bahnhöfe
 KNOWN_STATIONS = {
@@ -60,6 +73,10 @@ KNOWN_STATIONS = {
 
 station_info_cache = {}
 segment_cache = {}
+station_node_cache = {}
+main_component = None  # wird in main() gesetzt
+fern_nodes = None  # Knoten an Gleisen, die in Fernverkehrsrelationen vorkommen
+usable_nodes = None  # Knoten, die nicht ausschließlich an S-Bahn-Gleisen liegen
 
 
 def haversine_km(coords):
@@ -75,106 +92,376 @@ def haversine_km(coords):
     return total
 
 
-def api_get(path: str, params: dict):
-    for attempt in range(3):
-        try:
-            resp = requests.get(f"{API_BASE}{path}", params=params, timeout=20)
-            if resp.status_code == 429 or resp.status_code >= 500:
-                time.sleep(2 * (attempt + 1))
-                continue
-            resp.raise_for_status()
-            return resp.json()
-        except requests.RequestException:
-            if attempt == 2:
-                return None
-            time.sleep(1.5 * (attempt + 1))
-    return None
-
-
 def resolve_station(station_name: str):
     if station_name in station_info_cache:
         return station_info_cache[station_name]
 
-    data = api_get(
-        "/locations",
-        {
-            "query": station_name,
-            "results": 3,
-            "stops": "true",
-            "addresses": "false",
-            "poi": "false",
-        },
-    )
-    time.sleep(0.25)
+    if station_name not in KNOWN_STATIONS:
+        raise ValueError(f"Keine Koordinaten für Bahnhof: {station_name}")
 
-    if data:
-        for item in data:
-            if item.get("type") in ("stop", "station") and item.get("id"):
-                loc = item.get("location") or {}
-                coords = KNOWN_STATIONS.get(
-                    station_name,
-                    [loc.get("longitude"), loc.get("latitude")],
-                )
-                info = {"id": item["id"], "coords": coords}
-                station_info_cache[station_name] = info
-                return info
-
-    # Fallback auf statische Koordinaten ohne HAFAS-ID
     info = {"id": None, "coords": KNOWN_STATIONS[station_name]}
     station_info_cache[station_name] = info
     return info
 
 
-def route_segment(station_a: str, station_b: str):
+def segment_bounds(station_a: str, station_b: str):
+    start = resolve_station(station_a)["coords"]
+    end = resolve_station(station_b)["coords"]
+    distance_km = haversine_km([start, end])
+    latitude_padding = max(0.1, min(0.1 + distance_km / 111 * 0.1, 0.5))
+    middle_latitude = math.radians((start[1] + end[1]) / 2)
+    longitude_padding = latitude_padding / max(math.cos(middle_latitude), 0.5)
+
+    south = min(start[1], end[1]) - latitude_padding
+    west = min(start[0], end[0]) - longitude_padding
+    north = max(start[1], end[1]) + latitude_padding
+    east = max(start[0], end[0]) + longitude_padding
+    return south, west, north, east
+
+
+def _segment_boxes(station_pairs):
+    return {
+        tuple(round(value, 5) for value in segment_bounds(station_a, station_b))
+        for station_a, station_b in station_pairs
+    }
+
+
+def _format_overpass_query(boxes):
+    queries = [
+        f'way["railway"="rail"]["usage"~"^(main|branch)$"][!"service"]'
+        f"({south},{west},{north},{east});"
+        for south, west, north, east in boxes
+    ]
+    return "[out:json][timeout:120];\n(\n" + "\n".join(queries) + "\n);\nout body geom;"
+
+
+def build_overpass_query(station_pairs):
+    boxes = _segment_boxes(station_pairs)
+    if not boxes:
+        raise ValueError("Keine Streckenabschnitte zum Berechnen vorhanden.")
+    return _format_overpass_query(sorted(boxes))
+
+
+def build_overpass_queries(station_pairs, boxes_per_query=OVERPASS_BOXES_PER_QUERY):
+    boxes = sorted(_segment_boxes(station_pairs))
+    if not boxes:
+        raise ValueError("Keine Streckenabschnitte zum Berechnen vorhanden.")
+    if boxes_per_query < 1:
+        raise ValueError("boxes_per_query muss mindestens 1 sein.")
+
+    return [
+        _format_overpass_query(boxes[index:index + boxes_per_query])
+        for index in range(0, len(boxes), boxes_per_query)
+    ]
+
+
+def build_rail_graph(overpass_data):
+    global usable_nodes, fern_nodes
+    graph = {}
+    node_coords = {}
+    usable_nodes = set()
+    fern_nodes = set()
+
+    for way in overpass_data.get("elements", []):
+        tags = way.get("tags") or {}
+        if tags.get("railway") != "rail":
+            continue
+        nodes = way.get("nodes") or []
+        geometry = way.get("geometry") or []
+        if len(geometry) < 2:
+            continue
+
+        if len(nodes) != len(geometry):
+            nodes = [(point["lon"], point["lat"]) for point in geometry]
+
+        coordinates = []
+        sbahn_only = bool(way.get("sbahn"))
+        for node, point in zip(nodes, geometry):
+            coordinate = [point["lon"], point["lat"]]
+            node_coords[node] = coordinate
+            coordinates.append((node, coordinate))
+            if not sbahn_only:
+                usable_nodes.add(node)
+            if way.get("fern"):
+                fern_nodes.add(node)
+
+        # Reine S-Bahn-Gleise sind erlaubt, aber teuer: Fernzüge nutzen sie nur,
+        # wenn es keine vernünftige Alternative gibt.
+        penalty = S_BAHN_PENALTY if sbahn_only else 1.0
+        for (start_node, start), (end_node, end) in zip(coordinates, coordinates[1:]):
+            if start_node == end_node:
+                continue
+            distance = haversine_km([start, end]) * penalty
+            graph.setdefault(start_node, {})[end_node] = min(
+                distance, graph.get(start_node, {}).get(end_node, distance)
+            )
+            graph.setdefault(end_node, {})[start_node] = min(
+                distance, graph.get(end_node, {}).get(start_node, distance)
+            )
+
+    if not graph:
+        elements = overpass_data.get("elements", [])
+        remark = overpass_data.get("remark")
+        details = f" Overpass-Hinweis: {remark}" if remark else ""
+        raise RuntimeError(
+            f"Overpass lieferte {len(elements)} Elemente, aber keine nutzbaren "
+            f"Eisenbahn-Gleise.{details}"
+        )
+    return graph, node_coords
+
+
+def fetch_overpass_data(query):
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    cache_file = os.path.join(CACHE_DIR, hashlib.sha1(query.encode()).hexdigest() + ".json")
+    if os.path.exists(cache_file):
+        with open(cache_file, encoding="utf-8") as f:
+            return json.load(f)
+
+    errors = []
+    for attempt in range(3):
+        if attempt:
+            wait = 10 * attempt
+            print(f"Alle Dienste fehlgeschlagen; neuer Versuch in {wait}s ...")
+            time.sleep(wait)
+        data = _try_overpass_services(query, errors)
+        if data is not None:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+            return data
+
+    raise RuntimeError(
+        "Alle OpenStreetMap-Overpass-Dienste sind fehlgeschlagen: "
+        + " | ".join(errors[-len(OVERPASS_URLS):])
+    )
+
+
+def _try_overpass_services(query, errors):
+    for index, url in enumerate(OVERPASS_URLS):
+        try:
+            response = requests.post(
+                url,
+                data={"data": query},
+                headers={"User-Agent": "db-reisevisualisierung/1.0"},
+                timeout=180,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if not isinstance(data, dict) or not data.get("elements"):
+                remark = data.get("remark") if isinstance(data, dict) else None
+                message = remark or "Antwort enthält keine OSM-Elemente."
+                raise requests.RequestException(message)
+            if data.get("remark"):
+                raise requests.RequestException(
+                    f"Unvollständige Overpass-Antwort: {data['remark']}"
+                )
+            return data
+        except (requests.RequestException, ValueError) as error:
+            errors.append(f"{url}: {error}")
+            if index < len(OVERPASS_URLS) - 1:
+                print(f"Overpass-Dienst nicht erreichbar; versuche Ersatzdienst ({error}).")
+    return None
+
+
+def fetch_rail_graph(station_pairs):
+    if os.path.exists(LOCAL_NETWORK):
+        print(f"Nutze lokales Bahnnetz aus {LOCAL_NETWORK} (statt Overpass).")
+        with open(LOCAL_NETWORK, encoding="utf-8") as f:
+            return build_rail_graph(json.load(f))
+
+    queries = build_overpass_queries(station_pairs)
+    graph = {}
+    node_coords = {}
+
+    for index, query in enumerate(queries):
+        if index:
+            time.sleep(1)
+        print(f"Overpass-Abfrage {index + 1}/{len(queries)} ...")
+        batch_graph, batch_node_coords = build_rail_graph(fetch_overpass_data(query))
+        for node, neighbors in batch_graph.items():
+            for neighbor, distance in neighbors.items():
+                graph.setdefault(node, {})[neighbor] = min(
+                    distance, graph.get(node, {}).get(neighbor, distance)
+                )
+        node_coords.update(batch_node_coords)
+
+    return graph, node_coords
+
+
+def largest_component(graph):
+    """Knoten des größten zusammenhängenden Teilnetzes (Inseln werden ignoriert)."""
+    seen = set()
+    best = set()
+    for start in graph:
+        if start in seen:
+            continue
+        component = {start}
+        stack = [start]
+        while stack:
+            node = stack.pop()
+            for neighbor in graph[node]:
+                if neighbor not in component:
+                    component.add(neighbor)
+                    stack.append(neighbor)
+        seen |= component
+        if len(component) > len(best):
+            best = component
+    return best
+
+
+def nearest_track_node(station_name: str, node_coords):
+    if station_name in station_node_cache:
+        return station_node_cache[station_name]
+
+    station_coords = resolve_station(station_name)["coords"]
+
+    def best(only_fern):
+        candidates = (
+            (node, haversine_km([station_coords, coords]))
+            for node, coords in node_coords.items()
+            if (main_component is None or node in main_component)
+            and (not usable_nodes or node in usable_nodes)
+            and (not only_fern or node in fern_nodes)
+        )
+        return min(candidates, key=lambda item: item[1], default=(None, float("inf")))
+
+    # Fernverkehrshalte liegen an Fernverkehrsgleisen: die bevorzugen, wenn eines
+    # in Bahnhofsnähe liegt. Sonst dockt der Halt an einem Nebengleis an, das nur
+    # über große Umwege mit der Strecke verbunden ist (z. B. Montabaur).
+    node, distance = best(only_fern=bool(fern_nodes))
+    if node is None or distance > FERN_SNAP_KM:
+        node, distance = best(only_fern=False)
+    if distance > 5:
+        raise RuntimeError(
+            f"Kein OSM-Gleis in Bahnhofsnähe gefunden: {station_name} "
+            f"(nächster Gleispunkt {distance:.1f} km entfernt)."
+        )
+
+    if distance > 0.5:
+        print(f"  Hinweis: {station_name} dockt {distance:.2f} km entfernt am Netz an.")
+    station_node_cache[station_name] = node
+    return node
+
+
+def shortest_rail_path(graph, start_node, end_node):
+    distances = {start_node: 0.0}
+    previous = {}
+    queue = [(0.0, start_node)]
+
+    while queue:
+        distance, node = heapq.heappop(queue)
+        if node == end_node:
+            break
+        if distance > distances[node]:
+            continue
+
+        for neighbor, edge_distance in graph.get(node, {}).items():
+            candidate = distance + edge_distance
+            if candidate < distances.get(neighbor, float("inf")):
+                distances[neighbor] = candidate
+                previous[neighbor] = node
+                heapq.heappush(queue, (candidate, neighbor))
+
+    if end_node not in distances:
+        return None
+
+    path = [end_node]
+    while path[-1] != start_node:
+        path.append(previous[path[-1]])
+    path.reverse()
+    return path
+
+
+def _point_segment_dist(p, a, b):
+    """Abstand Punkt-Strecke in Grad (lon-Skalierung korrigiert)."""
+    k = math.cos(math.radians(p[1]))
+    px, py = p[0] * k, p[1]
+    ax, ay = a[0] * k, a[1]
+    bx, by = b[0] * k, b[1]
+    dx, dy = bx - ax, by - ay
+    if dx == 0 and dy == 0:
+        return math.hypot(px - ax, py - ay)
+    t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+def simplify_path(coords, tolerance=SIMPLIFY_TOLERANCE_DEG):
+    """Douglas-Peucker (iterativ). Start/Ende bleiben erhalten."""
+    if len(coords) < 3:
+        return coords
+    keep = [False] * len(coords)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(coords) - 1)]
+    while stack:
+        first, last = stack.pop()
+        far_dist, far_index = 0.0, None
+        for i in range(first + 1, last):
+            d = _point_segment_dist(coords[i], coords[first], coords[last])
+            if d > far_dist:
+                far_dist, far_index = d, i
+        if far_index is not None and far_dist > tolerance:
+            keep[far_index] = True
+            stack.append((first, far_index))
+            stack.append((far_index, last))
+    return [[round(c[0], 5), round(c[1], 5)] for c, k in zip(coords, keep) if k]
+
+
+def route_segment(station_a: str, station_b: str, graph, node_coords):
     key = (station_a, station_b)
     if key in segment_cache:
         return segment_cache[key]
+    reverse_key = (station_b, station_a)
+    if reverse_key in segment_cache:
+        reverse_paths, distance = segment_cache[reverse_key]
+        paths = [list(reversed(path)) for path in reverse_paths]
+        segment_cache[key] = (paths, distance)
+        return paths, distance
 
-    info_a = resolve_station(station_a)
-    info_b = resolve_station(station_b)
+    start_node = nearest_track_node(station_a, node_coords)
+    end_node = nearest_track_node(station_b, node_coords)
+    node_path = shortest_rail_path(graph, start_node, end_node)
+    if not node_path:
+        raise RuntimeError(f"Kein zusammenhängender OSM-Gleisweg: {station_a} -> {station_b}")
 
-    if info_a["id"] and info_b["id"]:
-        # Erst Direktverbindung (transfers=0), dann mit max. 1 Umstieg testen
-        for max_transfers in (0, 1):
-            data = api_get(
-                "/journeys",
-                {
-                    "from": info_a["id"],
-                    "to": info_b["id"],
-                    "departure": "2026-11-18T09:00:00+01:00",
-                    "results": 2,
-                    "transfers": max_transfers,
-                    "polylines": "true",
-                    "bus": "false",
-                    "subway": "false",
-                    "tram": "false",
-                    "taxi": "false",
-                },
-            )
-            time.sleep(0.35)
+    coordinates = [resolve_station(station_a)["coords"]]
+    for node in node_path:
+        point = node_coords[node]
+        if point != coordinates[-1]:
+            coordinates.append(point)
+    end_coords = resolve_station(station_b)["coords"]
+    if end_coords != coordinates[-1]:
+        coordinates.append(end_coords)
 
-            if data and data.get("journeys"):
-                for journey in data["journeys"]:
-                    coords = []
-                    for leg in journey.get("legs", []):
-                        poly = leg.get("polyline") or {}
-                        for feat in poly.get("features", []):
-                            geom = feat.get("geometry") or {}
-                            if geom.get("type") == "Point":
-                                c = geom.get("coordinates")
-                                if c and len(c) >= 2:
-                                    coords.append([c[0], c[1]])
-                    if len(coords) >= 2:
-                        dist_km = haversine_km(coords)
-                        segment_cache[key] = (coords, dist_km)
-                        return coords, dist_km
+    distance = haversine_km(coordinates)  # Länge vor der Vereinfachung
+    paths = [simplify_path(coordinates)]
+    segment_cache[key] = (paths, distance)
+    return paths, distance
 
-    # Fallback: direkte Verbindung der Bahnhofskoordinaten
-    print(f"   [Fallback-Linie] {station_a} -> {station_b}")
-    coords = [info_a["coords"], info_b["coords"]]
-    dist_km = haversine_km(coords)
-    segment_cache[key] = (coords, dist_km)
-    return coords, dist_km
+
+def remove_spikes(nodes):
+    """Entfernt Hin-und-zurück-Zacken (A, B, A -> A), z. B. an Durchgangsbahnhöfen."""
+    out = []
+    for node in nodes:
+        if out and out[-1] == node:
+            continue
+        if len(out) >= 2 and out[-2] == node:
+            out.pop()
+        else:
+            out.append(node)
+    return out
+
+
+def route_trip(stops, graph, node_coords):
+    """Berechnet den Gleisweg einer ganzen Fahrt als zusammenhängende Linie."""
+    nodes = []
+    for station_a, station_b in zip(stops, stops[1:]):
+        start = nearest_track_node(station_a, node_coords)
+        end = nearest_track_node(station_b, node_coords)
+        path = shortest_rail_path(graph, start, end)
+        if not path:
+            raise RuntimeError(f"Kein zusammenhängender OSM-Gleisweg: {station_a} -> {station_b}")
+        nodes.extend(path)
+    coordinates = [node_coords[node] for node in remove_spikes(nodes)]
+    return coordinates, haversine_km(coordinates)
 
 
 def main():
@@ -182,6 +469,8 @@ def main():
     df = pd.read_csv(CSV_PATH, sep=";")
     route_features = []
     station_visits = {}
+    trip_rows = []
+    station_pairs = []
 
     for idx, row in df.iterrows():
         stops = [row["Startbahnhof"].strip()]
@@ -196,17 +485,20 @@ def main():
             station_visits[s] = station_visits.get(s, 0) + 1
 
         print(f"[{idx + 1}/{len(df)}] {row['Datum']}: {stops[0]} -> {stops[-1]}")
+        trip_rows.append((idx, row, stops))
+        station_pairs.extend(zip(stops, stops[1:]))
 
-        full_coords = []
-        total_dist_km = 0.0
+    print("Lade OpenStreetMap-Schienenwege für alle Streckenabschnitte ...")
+    graph, node_coords = fetch_rail_graph(station_pairs)
+    print(f"{len(node_coords):,} Gleispunkte geladen; berechne kürzeste Gleiswege.")
+    global main_component
+    main_component = largest_component(graph)
 
-        for i in range(len(stops) - 1):
-            seg_coords, seg_dist = route_segment(stops[i], stops[i + 1])
-            if full_coords and seg_coords:
-                full_coords.extend(seg_coords[1:])
-            else:
-                full_coords.extend(seg_coords)
-            total_dist_km += seg_dist
+    segment_cache.clear()
+    station_node_cache.clear()
+    for idx, row, stops in trip_rows:
+        coordinates, total_dist_km = route_trip(stops, graph, node_coords)
+        full_paths = [simplify_path(coordinates)]
 
         route_features.append(
             {
@@ -224,8 +516,8 @@ def main():
                     "distanz_km": round(total_dist_km, 1),
                 },
                 "geometry": {
-                    "type": "LineString",
-                    "coordinates": full_coords,
+                    "type": "MultiLineString",
+                    "coordinates": full_paths,
                 },
             }
         )
@@ -236,7 +528,12 @@ def main():
     stations_export = [
         {
             "name": name,
-            "coords": resolve_station(name)["coords"],
+            # Marker auf das Gleis setzen, an dem die Linien tatsächlich enden
+            "coords": (
+                node_coords[station_node_cache[name]]
+                if name in station_node_cache
+                else resolve_station(name)["coords"]
+            ),
             "visits": count,
         }
         for name, count in sorted(station_visits.items(), key=lambda x: -x[1])

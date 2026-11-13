@@ -16,3 +16,8 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Große Zwischendaten (reproduzierbar via scripts/extract_rails.py)
+data/pbf/
+data/rail_network.json
+data/.overpass_cache/
