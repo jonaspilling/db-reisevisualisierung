@@ -5,7 +5,7 @@
       8.6631138,
       50.1067482
     ],
-    "visits": 13
+    "visits": 14
   },
   {
     "name": "München Hbf",
@@ -13,7 +13,31 @@
       11.5574566,
       48.1402325
     ],
-    "visits": 10
+    "visits": 11
+  },
+  {
+    "name": "Stuttgart Hbf",
+    "coords": [
+      9.1830548,
+      48.7855007
+    ],
+    "visits": 6
+  },
+  {
+    "name": "Ulm Hbf",
+    "coords": [
+      9.9828337,
+      48.3993151
+    ],
+    "visits": 6
+  },
+  {
+    "name": "Augsburg Hbf",
+    "coords": [
+      10.8858181,
+      48.3653975
+    ],
+    "visits": 6
   },
   {
     "name": "Nürnberg Hbf",
@@ -24,26 +48,10 @@
     "visits": 5
   },
   {
-    "name": "Stuttgart Hbf",
+    "name": "München-Pasing",
     "coords": [
-      9.1830548,
-      48.7855007
-    ],
-    "visits": 5
-  },
-  {
-    "name": "Ulm Hbf",
-    "coords": [
-      9.9828337,
-      48.3993151
-    ],
-    "visits": 5
-  },
-  {
-    "name": "Augsburg Hbf",
-    "coords": [
-      10.8858181,
-      48.3653975
+      11.4617502,
+      48.150152
     ],
     "visits": 5
   },
@@ -84,14 +92,6 @@
     "coords": [
       8.468921,
       49.4797679
-    ],
-    "visits": 4
-  },
-  {
-    "name": "München-Pasing",
-    "coords": [
-      11.4617502,
-      48.150152
     ],
     "visits": 4
   },
@@ -140,6 +140,46 @@
     "coords": [
       13.3653581,
       52.4751531
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Darmstadt Hbf",
+    "coords": [
+      8.6299484,
+      49.8722157
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Bensheim",
+    "coords": [
+      8.6170375,
+      49.6805092
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Weinheim(Bergstr)Hbf",
+    "coords": [
+      8.6657113,
+      49.553863
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Heidelberg Hbf",
+    "coords": [
+      8.6753324,
+      49.4037595
+    ],
+    "visits": 2
+  },
+  {
+    "name": "Günzburg",
+    "coords": [
+      10.2783228,
+      48.4603618
     ],
     "visits": 2
   },
@@ -300,46 +340,6 @@
     "coords": [
       11.4009822,
       47.2632805
-    ],
-    "visits": 1
-  },
-  {
-    "name": "Darmstadt Hbf",
-    "coords": [
-      8.6299484,
-      49.8722157
-    ],
-    "visits": 1
-  },
-  {
-    "name": "Bensheim",
-    "coords": [
-      8.6170375,
-      49.6805092
-    ],
-    "visits": 1
-  },
-  {
-    "name": "Weinheim(Bergstr)Hbf",
-    "coords": [
-      8.6657113,
-      49.553863
-    ],
-    "visits": 1
-  },
-  {
-    "name": "Heidelberg Hbf",
-    "coords": [
-      8.6753324,
-      49.4037595
-    ],
-    "visits": 1
-  },
-  {
-    "name": "Günzburg",
-    "coords": [
-      10.2783228,
-      48.4603618
     ],
     "visits": 1
   }

@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import heapq
 import json
 import math
@@ -21,7 +21,7 @@ OVERPASS_BOXES_PER_QUERY = 2
 CACHE_DIR = "data/.overpass_cache"
 FERN_SNAP_KM = 1.0  # so weit darf ein Fernverkehrsgleis vom Bahnhof entfernt sein
 S_BAHN_PENALTY = 4.0  # Kostenfaktor für reine S-Bahn-Gleise
-SIMPLIFY_TOLERANCE_DEG = 0.0002  # ca. 20 m: unsichtbar, spart ~90 % Punkte
+SIMPLIFY_TOLERANCE_DEG = 0.00004  # ca. 4 m: beim Hineinzoomen noch rund, spart trotzdem die meisten Punkte
 LOCAL_NETWORK ="data/rail_network.json"  # erzeugt von scripts/extract_rails.py
 
 # Fallback-Koordinaten [lon, lat] für alle 43 Bahnhöfe
@@ -70,6 +70,24 @@ KNOWN_STATIONS = {
     "Wörgl Hbf": [12.0636, 47.4919],
     "Würzburg Hbf": [9.9358, 49.8019],
 }
+
+# Zwischenpunkte [lon, lat], wo der kürzeste Weg nicht der echte ist. Die Züge zum Frankfurter Flughafen
+# fahren vom Hbf über Niederrad und Stadion, nicht über den Süden und die Riedbahn.
+_AIRPORT_VIA = [[8.6318, 50.0947], [8.6342, 50.0846], [8.6372, 50.0690]]  # Niederrad, Strecke nach Süden, Stadion
+VIA_POINTS = {
+    ("Frankfurt(Main)Hbf", "Frankfurt(M) Flughafen Fernbf"): _AIRPORT_VIA,
+    ("Frankfurt(M) Flughafen Fernbf", "Frankfurt(Main)Hbf"): _AIRPORT_VIA[::-1],
+}
+VIA_SNAP_KM = 0.5
+# Fehlende Verbindungen im OSM-Auszug: Die Gleisverbindung vom Frankfurter Hbf nach Westen (Richtung Niederrad)
+# fehlt dort, der Weg machte einen Umweg über die Brücke nach Süden und wieder zurück. Hier wird sie von Hand
+# nachgezogen: Paare von Punkten [lon, lat], die als Direktverbindung ins Netz kommen.
+MANUAL_LINKS = []
+
+# Einstieg ins Netz von Hand: Der nächste Gleisknoten am Frankfurter Hbf hängt an einem Bahnsteiggleis, das im
+# OSM-Auszug nur über einen Umweg mit den durchgehenden Gleisen nach Westen verbunden ist (Knick Richtung Gallus).
+# Dieser Knoten liegt wenige Meter daneben und hat die direkte Verbindung.
+STATION_NODE_HINTS = {"Frankfurt(Main)Hbf": [8.66266, 50.10724]}
 
 station_info_cache = {}
 segment_cache = {}
@@ -450,16 +468,54 @@ def remove_spikes(nodes):
     return out
 
 
+def nearest_via_node(point, node_coords):
+    """Nächster Gleisknoten (beliebiges Gleis) zu einem Zwischenpunkt, sonst None."""
+    best, best_d = None, VIA_SNAP_KM
+    for node, coords in node_coords.items():
+        if main_component is not None and node not in main_component:
+            continue
+        if abs(coords[0] - point[0]) > 0.01 or abs(coords[1] - point[1]) > 0.01:
+            continue
+        d = haversine_km([point, coords])
+        if d < best_d:
+            best, best_d = node, d
+    return best
+
+
+def add_manual_links(graph, node_coords):
+    for a, b in MANUAL_LINKS:
+        na, nb = nearest_via_node(a, node_coords), nearest_via_node(b, node_coords)
+        if na is None or nb is None or na == nb:
+            print(f"  Hinweis: manuelle Verbindung {a} -> {b} nicht angelegt (kein Gleis in der Nähe).")
+            continue
+        d = haversine_km([node_coords[na], node_coords[nb]])
+        graph.setdefault(na, {})[nb] = d
+        graph.setdefault(nb, {})[na] = d
+
+
+def hinted_node(station_name, node_coords):
+    hint = STATION_NODE_HINTS.get(station_name)
+    return nearest_via_node(hint, node_coords) if hint else None
+
+
 def route_trip(stops, graph, node_coords):
     """Berechnet den Gleisweg einer ganzen Fahrt als zusammenhängende Linie."""
     nodes = []
     for station_a, station_b in zip(stops, stops[1:]):
-        start = nearest_track_node(station_a, node_coords)
-        end = nearest_track_node(station_b, node_coords)
-        path = shortest_rail_path(graph, start, end)
-        if not path:
-            raise RuntimeError(f"Kein zusammenhängender OSM-Gleisweg: {station_a} -> {station_b}")
-        nodes.extend(path)
+        vias = VIA_POINTS.get((station_a, station_b), [])
+        # Auf Abschnitten mit Zwischenpunkten (Richtung Flughafen) steigt die Strecke am Einstiegsknoten ein,
+        # der direkt an den durchgehenden Gleisen hängt; alle anderen Fahrten behalten den nächsten Gleisknoten.
+        chain = [(hinted_node(station_a, node_coords) if vias else None) or nearest_track_node(station_a, node_coords)]
+        for via in vias:
+            node = nearest_via_node(via, node_coords)
+            if node is not None:
+                chain.append(node)
+        chain.append((hinted_node(station_b, node_coords) if vias else None) or nearest_track_node(station_b, node_coords))
+        for start, end in zip(chain, chain[1:]):
+            path = shortest_rail_path(graph, start, end)
+            if not path:
+                raise RuntimeError(f"Kein zusammenhängender OSM-Gleisweg: {station_a} -> {station_b}")
+            nodes.extend(path)
     coordinates = [node_coords[node] for node in remove_spikes(nodes)]
     return coordinates, haversine_km(coordinates)
 
@@ -493,6 +549,7 @@ def main():
     print(f"{len(node_coords):,} Gleispunkte geladen; berechne kürzeste Gleiswege.")
     global main_component
     main_component = largest_component(graph)
+    add_manual_links(graph, node_coords)
 
     segment_cache.clear()
     station_node_cache.clear()

@@ -21,3 +21,26 @@ Thumbs.db
 data/pbf/
 data/rail_network.json
 data/.overpass_cache/
+
+# impeccable-ignore-start
+**/.impeccable/config.local.json
+**/.impeccable/hook.cache.json
+**/.impeccable/hook.pending.json
+**/.impeccable/*.png
+**/.impeccable/review/
+**/.impeccable/live/server.json
+**/.impeccable/live/sessions/
+# impeccable-ignore-end
+
+# Impeccable: Skills (.claude/skills, .claude/agents) bleiben im Git, damit das Tool
+# auf jedem Rechner nutzbar ist. Nicht ins Git gehören:
+#  - die plattformspezifische Programmdatei (lädt sich beim ersten Start selbst herunter)
+#  - die lokalen Hook-Einstellungen (erzeugt von "npx impeccable install")
+.claude/skills/impeccable/scripts/bin/
+.claude/settings.local.json
+
+# Lokale Zwischenstände
+*.log
+.vite/
+
+data/ne/

@@ -1,0 +1,157 @@
+/* Projekt-Seite: gestapelte Szenen.
+   Jede Szene ist ein hoher Block; die Bühne darin bleibt am oberen Rand kleben,
+   die nächste Szene schiebt sich darüber (Höhe = (2 + Verweildauer) Bildschirme,
+   die Überlappung ist ein Bildschirm). Variablen --p / --in / --out kommen aus lib/scenes.js. */
+
+.stack {
+  position: relative;
+}
+
+.scene {
+  position: relative;
+  height: calc((2 + var(--dwell, 1)) * 100svh);
+  margin-top: -100svh;
+}
+
+.scene:first-child {
+  margin-top: 0;
+}
+
+.sc-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+  background: var(--s-bg);
+  color: var(--s-fg);
+  padding: calc(var(--bar-h) + 1.25rem) var(--pad) clamp(1.5rem, 4vh, 3rem);
+  display: grid;
+  align-content: center;
+  gap: clamp(1.25rem, 3.5vh, 2.5rem);
+  /* Beim Hereinschieben oben abgerundet, angekommen eckig. Nur die Rundung bewegt sich, nichts wird skaliert. */
+  border-radius: calc((1 - var(--in, 1)) * var(--r-lg)) calc((1 - var(--in, 1)) * var(--r-lg)) 0 0;
+}
+
+/* Abdunkeln beim Überdecken (ein Film statt Filter: billiger zu zeichnen) */
+.sc-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0b0e14;
+  opacity: calc(var(--out, 0) * 0.45);
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Drei Böden aus der bestehenden Palette */
+.t-light {
+  --s-bg: #ffffff;
+  --s-fg: var(--text);
+  --s-mute: var(--muted);
+  --s-acc: var(--red);
+  --s-line: var(--line);
+  --s-soft: var(--panel-2);
+}
+
+.t-red {
+  --s-bg: var(--red);
+  --s-fg: #ffffff;
+  --s-mute: rgba(255, 255, 255, 0.92);
+  --s-acc: #ffffff;
+  --s-line: rgba(255, 255, 255, 0.45);
+  --s-soft: rgba(0, 0, 0, 0.2);
+}
+
+.t-dark {
+  --s-bg: #282d37;
+  --s-fg: #ffffff;
+  --s-mute: #b9bfca;
+  --s-acc: var(--red);
+  --s-line: rgba(255, 255, 255, 0.28);
+  --s-soft: rgba(255, 255, 255, 0.12);
+}
+
+/* Der Satz: groß und kurz */
+.say {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2.3rem, 6.4vw, 6rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  max-width: 17ch;
+  text-wrap: balance;
+}
+
+.say.wide {
+  max-width: 22ch;
+}
+
+.say em {
+  font-style: normal;
+  color: var(--s-acc);
+}
+
+.sub {
+  font-size: clamp(1.05rem, 1.6vw, 1.4rem);
+  line-height: 1.45;
+  color: var(--s-mute);
+  max-width: 36rem;
+}
+
+.sub b {
+  color: var(--s-fg);
+  font-weight: 700;
+}
+
+.fine {
+  font-size: 0.9rem;
+  color: var(--s-mute);
+  max-width: 40rem;
+}
+
+/* Wort für Wort aus einer Maske aufsteigen, gesteuert von --in der Szene */
+.w {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+
+.wi {
+  display: inline-block;
+  transform: translateY(calc((1 - clamp(0, calc((var(--in, 1) - var(--i, 0) * 0.045) * 2.4), 1)) * 112%));
+}
+
+/* Ein Element, das sich mit --p in einem Abschnitt [a, b] einblendet: style="--a:.2;--b:.5" */
+.fade {
+  opacity: clamp(0, calc((var(--p, 1) - var(--a, 0)) / (var(--b, 0.1) - var(--a, 0))), 1);
+  transform: translateY(calc((1 - clamp(0, calc((var(--p, 1) - var(--a, 0)) / (var(--b, 0.1) - var(--a, 0))), 1)) * 18px));
+}
+
+/* Keine Bewegung gewünscht: alles steht fertig, Szenen sind normale Blöcke */
+.stack.still .scene {
+  height: auto;
+  margin-top: 0;
+}
+
+.stack.still .sc-stage {
+  position: relative;
+  height: auto;
+  min-height: 100svh;
+}
+
+.stack.still .sc-stage::after {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .sc-stage {
+    padding-top: calc(var(--bar-h) + 0.5rem);
+  }
+}
+
+/* Der rote Abschluss geht ohne weißen Streifen in die Fußzeile über */
+.page:has(.outro) + .footer {
+  margin-top: 0;
+}
