@@ -20,7 +20,7 @@
   const t = daysAndHours(train);
 </script>
 
-<section class="scene t-light" style="--dwell:1.2" use:scene={(v) => (p = v)}>
+<section class="scene t-light" style="--dwell:1.2" data-ms="3400" use:scene={(v) => (p = v)}>
   <div class="sc-stage">
     <h2 class="say wide">
       <Words text="Zu Fuß wären es" />

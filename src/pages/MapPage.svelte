@@ -942,11 +942,24 @@
       }
     }
 
+    // Handy ohne Bedienfelder: die Kamera fährt dem Zug dicht hinterher, damit man die Strecke erkennt
+    if (bare && playing && headFC.features.length && ts - lastFollow > 700) {
+      lastFollow = ts;
+      map.easeTo({
+        center: headFC.features[0].geometry.coordinates,
+        zoom: baseZoom + 1.9,
+        duration: 900,
+        easing: (t) => t,
+        essential: true,
+      });
+    }
+
     if (!playing || dragging || !ready || !visible) return;
     const next = u + (dt / 1000) * (speed / UNIT_SECONDS);
     if (next >= totalU) {
       u = totalU;
       playing = false;
+      if (bare) frame(1800); // am Ende wieder das ganze Jahr im Überblick
     } else {
       u = next;
     }

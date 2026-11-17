@@ -13,7 +13,7 @@
   const countryCount = story.countries.length;
 </script>
 
-<section class="scene t-light" style="--dwell:1.2" use:scene>
+<section class="scene t-light" style="--dwell:1.2" data-ms="11000" use:scene>
   <div class="sc-stage">
     <h2 class="say wide">
       <span class="w" style="--i:0"><span class="wi hl">{story.stations.length}</span></span>

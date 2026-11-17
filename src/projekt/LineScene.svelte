@@ -2,6 +2,7 @@
   import { scene } from "../lib/scenes.js";
   import { shortName } from "../lib/facts.js";
   import { endpointNames } from "../lib/story.js";
+  import { measure, drawn } from "../lib/dash.js";
   import Odometer from "./Odometer.svelte";
 
   let { story } = $props();
@@ -51,7 +52,9 @@
   const t = $derived(clamp((p - 0.03) / 0.92) * N);
   const cur = $derived(Math.min(N - 1, Math.floor(t)));
   const frac = (j) => clamp(t - j);
-  const km = $derived(trips.reduce((s, tr, j) => s + tr.km * frac(j), 0));
+  const kmTotal = trips.reduce((s, tr) => s + tr.km, 0);
+  // Am Ende genau auf die ganze Zahl, sonst bleibt das letzte Rad zwischen zwei Ziffern stehen
+  const km = $derived(t >= N ? Math.round(kmTotal) : trips.reduce((s, tr, j) => s + tr.km * frac(j), 0));
   const trip = $derived(trips[cur]);
 
   // Spitze der gerade gezeichneten Fahrt
@@ -65,7 +68,7 @@
   });
 </script>
 
-<section class="scene t-light" style="--dwell:2.2" use:scene={(v) => (p = v)}>
+<section class="scene t-light" style="--dwell:2.2" data-ms="15000" use:scene={(v) => (p = v)}>
   <div class="sc-stage">
     <div class="copy">
       <h2 class="say">
@@ -95,12 +98,11 @@
       {#each d as dd, j}
         <path
           bind:this={els[j]}
+          use:measure
           d={dd}
-          pathLength="1"
           class="trip"
           class:now={j === cur && frac(j) > 0 && frac(j) < 1}
-          stroke-dasharray="1"
-          stroke-dashoffset={1 - frac(j)}
+          style={drawn(frac(j))}
         />
       {/each}
 
@@ -254,7 +256,7 @@
     }
 
     .caption {
-      min-height: 2.6rem;
+      min-height: 4.6rem;
     }
   }
 </style>

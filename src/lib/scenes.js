@@ -78,7 +78,8 @@ function playOnceWhenVisible(node, cb) {
   };
   set(0);
   const dwell = parseFloat(getComputedStyle(node).getPropertyValue("--dwell")) || 1;
-  const ms = 2400 + dwell * 1600;
+  // Dauer des Durchlaufs: pro Szene mit data-ms einstellbar, sonst nach der Verweildauer
+  const ms = parseFloat(node.dataset.ms) || 2400 + dwell * 1600;
   let raf = 0;
   let started = false;
   // Start, wenn die Szene in die obere Hälfte des Bildschirms gewandert ist (und nicht schon beim ersten Auftauchen

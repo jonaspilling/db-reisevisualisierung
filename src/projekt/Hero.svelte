@@ -39,21 +39,30 @@
     if (prefersReducedMotion()) return;
 
     const T0 = performance.now();
-    const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * x);
-    const SAMPLES = 7;
-    const SIZE = 0.04;
+    // Fast gleichmäßig, nur am Anfang und Ende etwas weicher
+    const ease = (x) => x + 0.08 * Math.sin(2 * Math.PI * x) * -0.5;
+    const SAMPLES = 5;
+    const TRAIN = 20; // Länge eines Zuges in Zeichnungseinheiten
     let raf = 0;
     let on = true;
     const frame = (now) => {
       raf = 0;
       if (!on) return;
       trains.forEach((el, i) => {
-        const delay = 3000 + i * 140;
-        const dur = 5000 + i * 450;
-        const t = now - T0 - delay;
+        // Ein Zug ist ein kurzes Stück fester Länge und fährt mit gleichem Tempo über die ganze Strecke, dann Pause
+        const len = lens[i];
+        const size = TRAIN / len;
+        const run = len * 16;
+        const dur = run + 1400 + i * 260;
+        const t = now - T0 - 2600 - i * 300;
         if (t < 0) return;
-        const s = ease((t % dur) / dur) * (1 + SIZE);
-        const a = Math.max(0, s - SIZE);
+        const u = (t % dur) / run;
+        if (u > 1) {
+          el.setAttribute("d", "");
+          return;
+        }
+        const s = ease(u) * (1 + size);
+        const a = Math.max(0, s - size);
         const b = Math.min(1, s);
         if (b - a < 0.002) {
           el.setAttribute("d", "");
@@ -310,7 +319,8 @@
   /* ... danach fährt auf jeder ein kurzer roter Zug von Anfang bis Ende, immer wieder (Bewegung in Script) */
   .train {
     stroke: var(--red);
-    stroke-width: 3.4;
+    stroke-width: 4.2;
+    stroke-linecap: butt;
   }
 
   .place circle {

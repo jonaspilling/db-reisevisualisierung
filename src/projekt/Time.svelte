@@ -13,12 +13,15 @@
   // Eine Zelle = eine Stunde im Zug, eine Zeile = ein ganzer Tag
   const filled = $derived(Math.round(total * clamp((p - 0.05) / 0.8)));
   const dh = $derived(daysAndHours(filled));
+  // Der fertige Text reserviert den Platz, damit die Überschrift beim Hochzählen nicht umbricht und springt
+  const fin = daysAndHours(total);
+  const label = (d) => `${d.days} ${plural(d.days, "Tag", "Tage")} und ${d.hours} ${plural(d.hours, "Stunde", "Stunden")}`;
 </script>
 
 <section class="scene t-dark" style="--dwell:1.2" use:scene={(v) => (p = v)}>
   <div class="sc-stage">
     <h2 class="say wide">
-      <span class="w" style="--i:0"><span class="wi">{dh.days}&nbsp;{plural(dh.days, "Tag", "Tage")} und {dh.hours}&nbsp;{plural(dh.hours, "Stunde", "Stunden")}</span></span>
+      <span class="w" style="--i:0"><span class="wi sized"><span class="ghost" aria-hidden="true">{label(fin)}</span><span class="live">{label(dh)}</span></span></span>
       <span class="w" style="--i:2"><span class="wi">im Zug.</span></span>
     </h2>
 
@@ -43,6 +46,19 @@
 </section>
 
 <style>
+  .sized {
+    display: inline-grid;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sized > * {
+    grid-area: 1 / 1;
+  }
+
+  .ghost {
+    visibility: hidden;
+  }
+
   .days {
     display: grid;
     gap: clamp(0.5rem, 1.4vh, 0.9rem);

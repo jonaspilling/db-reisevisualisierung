@@ -13,7 +13,7 @@
   const years = $derived(Math.round(story.moonYears * f));
 </script>
 
-<section class="scene t-light" style="--dwell:1" use:scene={(v) => (p = v)}>
+<section class="scene t-light" style="--dwell:1" data-ms="2800" use:scene={(v) => (p = v)}>
   <div class="sc-stage">
     <h2 class="say wide">
       <Words text="Bis zum Mond sind es noch" />

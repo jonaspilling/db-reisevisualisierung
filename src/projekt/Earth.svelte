@@ -24,7 +24,7 @@
   const times = nf(EARTH_KM / story.km, 1);
 </script>
 
-<section class="scene t-red" style="--dwell:1.2" use:scene={(v) => (p = v)}>
+<section class="scene t-red" style="--dwell:1.2" data-ms="3000" use:scene={(v) => (p = v)}>
   <div class="sc-stage">
     <h2 class="say wide">
       <Words text="Das sind" />

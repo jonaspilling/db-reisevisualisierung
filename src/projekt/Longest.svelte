@@ -2,11 +2,13 @@
   // Längste Fahrt (München–Lille) und kürzeste Fahrt (Railjet) in einem Kapitel.
   // Erst läuft die längste Fahrt: die Linie wird nach Zügen eingefärbt (ICE in DB-Rot, TGV im Rosa von TGV inOui).
   // Dann blendet die Szene in den Stil des Railjets über: die kürzeste Fahrt als Fahrkarte, dazu die Anbieter des Jahres.
-  import { scene, isStill } from "../lib/scenes.js";
+  import { onMount } from "svelte";
+  import { scene, isStill, isPhone, prefersReducedMotion } from "../lib/scenes.js";
   import { shortName } from "../lib/facts.js";
   import { formatDuration } from "../lib/data.js";
   import { projectTrips } from "../lib/project.js";
   import { AUTOBAHN_KMH, nf, tripLegs } from "../lib/story.js";
+  import { measure, drawn } from "../lib/dash.js";
   import Odometer from "./Odometer.svelte";
 
   let { story } = $props();
@@ -62,12 +64,39 @@
   let p = $state(0);
   let el = $state();
   let elB = $state();
-  const fA = $derived(clamp((p - 0.04) / 0.42));
+  // Handy: erst läuft A (nach Zeit), der Railjet-Teil liegt darunter und läuft für sich, sobald er im Bild ist
+  const phoneAnim = isPhone() && !prefersReducedMotion();
+  let pB = $state(0);
+  let rjEl = $state();
+  onMount(() => {
+    if (!phoneAnim || !rjEl) return;
+    let raf = 0;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        io.disconnect();
+        const t0 = performance.now() + 500;
+        const step = (now) => {
+          pB = clamp((now - t0) / 5200);
+          if (pB < 1) raf = requestAnimationFrame(step);
+        };
+        raf = requestAnimationFrame(step);
+      },
+      { rootMargin: "0px 0px -35% 0px", threshold: 0.4 }
+    );
+    io.observe(rjEl);
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  });
+  const fA = $derived(clamp((p - 0.04) / (phoneAnim ? 0.9 : 0.42)));
   // A blendet zuerst aus, dann kommt B herein: so liegen nie zwei Texte übereinander
   const kA = $derived(bOn && !still ? clamp((p - 0.5) / 0.06) : 0);
   const k = $derived(bOn ? (still ? 1 : clamp((p - 0.55) / 0.08)) : 0);
-  const fB = $derived(clamp((p - 0.64) / 0.3));
-  const km = $derived(trip.km * fA);
+  const fB = $derived(phoneAnim ? pB : clamp((p - 0.64) / 0.3));
+  // Am Ende genau auf die ganze Zahl, sonst bleibt das letzte Rad zwischen zwei Ziffern stehen
+  const km = $derived(fA >= 1 ? Math.round(trip.km) : trip.km * fA);
 
   const headA = $derived.by(() => {
     if (!el || fA <= 0 || fA >= 1) return null;
@@ -83,7 +112,7 @@
   });
 </script>
 
-<section class="scene t-dark" style="--dwell:2" use:scene={(v) => (p = v)}>
+<section class="scene t-dark" style="--dwell:2" data-ms="9000" use:scene={(v) => (p = v)}>
   <div class="sc-stage">
     <!-- A: längste Fahrt -->
     <div class="copy" style="opacity:{1 - kA}">
@@ -123,12 +152,10 @@
       <path bind:this={el} d={netA.paths[0]} class="measure" />
       {#each legs as l}
         <path
+          use:measure
           d={l.d}
           class="run"
-          pathLength="1"
-          stroke-dasharray="1"
-          stroke-dashoffset={1 - clamp((fA - l.s) / Math.max(l.e - l.s, 1e-6))}
-          style="stroke:{COLOR[l.op] || 'var(--red)'}"
+          style="stroke:{COLOR[l.op] || 'var(--red)'};{drawn(clamp((fA - l.s) / Math.max(l.e - l.s, 1e-6)))}"
         />
       {/each}
       <g class="end">
@@ -146,7 +173,7 @@
 
     <!-- B: Railjet, im Stil des Railjets (blendet beim Scrollen über die längste Fahrt) -->
     {#if bOn}
-      <div class="railjet" style="opacity:{k};visibility:{k > 0 ? 'visible' : 'hidden'}">
+      <div class="railjet" bind:this={rjEl} style="opacity:{k};visibility:{k > 0 ? 'visible' : 'hidden'}">
         <div class="rj-copy">
           <h2 class="rj-say">{isShortest ? "Kürzeste Fahrt:" : "Und einmal:"} {rjLeg.label.replace(/^RJ/, "Railjet RJ")}.</h2>
 
@@ -184,7 +211,7 @@
         <svg class="rj-path" viewBox={netB.viewBox} role="img" aria-label="Die Railjet-Fahrt als Linie" preserveAspectRatio="xMidYMid meet">
           <path d={dB} class="rj-ghost" stroke-width={3 * rjScale} />
           <path bind:this={elB} d={dB} class="measure" />
-          <path d={dB} class="rj-run" pathLength="1" stroke-dasharray="1" stroke-dashoffset={1 - fB} stroke-width={5 * rjScale} />
+          <path use:measure d={dB} class="rj-run" style={drawn(fB)} stroke-width={5 * rjScale} />
           {#if headB}
             <circle cx={headB.x} cy={headB.y} r={8 * rjScale} class="rj-head" stroke-width={4 * rjScale} />
           {/if}
@@ -302,6 +329,21 @@
   .head {
     fill: #fff;
     stroke-width: 4;
+  }
+
+  /* Handy: die Zeichnung ist schmal, deshalb größere Beschriftung und Punkte */
+  @media (max-width: 860px) {
+    .end text {
+      font-size: 26px;
+    }
+
+    .end circle {
+      r: 9px;
+    }
+
+    .head {
+      r: 10px;
+    }
   }
 
   /* ---- B: Railjet ---- */
