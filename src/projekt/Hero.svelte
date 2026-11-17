@@ -73,10 +73,10 @@
     <div class="backdrop" aria-hidden="true">
       <svg viewBox={net.viewBox} preserveAspectRatio="xMidYMid meet">
         {#each net.paths as d, i}
-          <path {d} class="base" pathLength="1" style="--i:{i}" />
+          <path {d} class="base" pathLength="100" style="--i:{i}" />
         {/each}
         {#each net.paths as d, i}
-          <path {d} class="train" pathLength="1" style="--i:{i}" />
+          <path {d} class="train" pathLength="100" style="--i:{i}" />
         {/each}
         {#each places as pl}
           <g transform="translate({pl.x} {pl.y})" class="place">
@@ -237,14 +237,14 @@
   .base {
     stroke: #3a4352;
     stroke-width: 2;
-    stroke-dasharray: 1;
+    stroke-dasharray: 100;
     animation: draw 2600ms var(--ease) both;
     animation-delay: calc(500ms + var(--i) * 140ms);
   }
 
   @keyframes draw {
     from {
-      stroke-dashoffset: 1;
+      stroke-dashoffset: 100;
     }
     to {
       stroke-dashoffset: 0;
@@ -255,8 +255,8 @@
   .train {
     stroke: var(--red);
     stroke-width: 3.4;
-    stroke-dasharray: 0.04 0.96;
-    stroke-dashoffset: 0.04;
+    stroke-dasharray: 4 200;
+    stroke-dashoffset: 4;
     opacity: 0;
     animation:
       appear 1ms linear forwards,
@@ -273,10 +273,10 @@
 
   @keyframes travel {
     from {
-      stroke-dashoffset: 0.04;
+      stroke-dashoffset: 4;
     }
     to {
-      stroke-dashoffset: -0.96;
+      stroke-dashoffset: -100;
     }
   }
 

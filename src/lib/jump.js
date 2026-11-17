@@ -96,11 +96,26 @@ export function goTo(target) {
   const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   el.animate([{ transform: `translateY(${down ? 100 : -100}%)` }, { transform: "translateY(0)" }], { duration: 420, easing: ease, fill: "forwards" })
     .finished.then(async () => {
+      // Handy: ein noch laufendes Ausrollen des Fingers (Momentum) würde das Setzen der Position überstimmen.
+      // Kurz Overflow sperren bricht es ab, dann wird gesetzt und nachgeprüft, bis die Seite wirklich am Ziel steht.
+      const prevOv = root.style.overflow;
       root.style.scrollBehavior = "auto";
-      window.scrollTo(0, dest());
+      root.style.overflow = "hidden";
+      const setY = () => {
+        const y = dest();
+        window.scrollTo(0, y);
+        root.scrollTop = y;
+        document.body.scrollTop = y;
+      };
+      setY();
+      for (let i = 0; i < 6; i++) {
+        await frame();
+        if (Math.abs(window.scrollY - dest()) > 2) setY();
+        else if (i >= 2) break;
+      }
+      root.style.overflow = prevOv;
       await frame();
-      window.scrollTo(0, dest()); // nach dem ersten Bild noch einmal: Höhe und Szenen haben sich eingestellt
-      await frame();
+      if (Math.abs(window.scrollY - dest()) > 2) setY();
       root.style.scrollBehavior = "";
       await el.animate([{ transform: "translateY(0)" }, { transform: `translateY(${down ? -100 : 100}%)` }], { duration: 520, easing: ease, fill: "forwards" }).finished;
     })

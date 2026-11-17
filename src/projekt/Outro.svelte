@@ -1,13 +1,13 @@
 <script>
   import { reveal } from "../lib/actions.js";
-  import { goSection } from "../lib/router.svelte.js";
+  import { goTo } from "../lib/jump.js";
 
   let { story } = $props();
 
-  // Beide Ziele liegen auf derselben Seite: sanft zur Karte beziehungsweise zu den Fakten hochscrollen
-  function go(e, section) {
+  // "Von vorn" heißt ganz nach oben, zum Anfang der Seite
+  function top(e) {
     e.preventDefault();
-    goSection(section);
+    goTo(0);
   }
 </script>
 
@@ -19,7 +19,7 @@
     </p>
     <div class="actions" use:reveal={220}>
       <a class="go" href="#/karte">Zur Karte <span aria-hidden="true">→</span></a>
-      <a class="again" href="#/projekt" onclick={(e) => go(e, "facts")}>Die Fakten noch mal von vorn</a>
+      <a class="again" href="#/projekt" onclick={top}>Die Fakten noch mal von vorn</a>
     </div>
   </div>
 </section>

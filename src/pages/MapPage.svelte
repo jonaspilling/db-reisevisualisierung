@@ -68,6 +68,18 @@
   let hoverCell = null;
   let clearTimer = 0;
   let visible = true;
+  let autoPending = false;
+  let autoTimer = 0;
+  // Einmaliger Start der Wiedergabe, sobald die Karte sichtbar ist
+  function maybeAutoplay() {
+    if (!autoPending || !visible) return;
+    autoPending = false;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(() => {
+      if (u === 0 && !dragging && visible) playing = true;
+      else if (u === 0 && !dragging) autoPending = true;
+    }, 700);
+  }
   let dragging = false;
   let resumeAfterDrag = false;
   let prevProg = [];
@@ -1348,10 +1360,11 @@
       setFocus();
       ready = true;
       // Beim Laden einmal alles durchlaufen lassen (außer bei reduzierter Bewegung)
+      // Die Wiedergabe startet erst, wenn die Karte wirklich im Bild ist (die Karte im Projekt wird schon vorher
+      // aufgebaut, während man noch weiter oben ist)
       if (!bare && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        setTimeout(() => {
-          if (u === 0 && !dragging) playing = true;
-        }, 900);
+        autoPending = true;
+        maybeAutoplay();
       } else {
         u = totalU;
       }
@@ -1477,6 +1490,7 @@
       visible = docVisible && inView;
       // Wieder im Bild: den Stand nachholen, der in der Zwischenzeit ausgesetzt wurde
       if (visible && !was && map && loaded) applyU(u);
+      if (visible && !was) maybeAutoplay();
     };
     const onVis = () => {
       docVisible = !document.hidden;
@@ -3086,12 +3100,18 @@
     }
 
     :global(.page-map.full .maplibregl-ctrl-top-right) {
-      bottom: 8.8rem;
+      bottom: 9.4rem;
       left: 0.8rem;
     }
 
+    /* Quellenangabe: klein, direkt über der schlanken Zeitleiste statt irgendwo im Bild */
     :global(.page-map.full .maplibregl-ctrl-bottom-right) {
-      bottom: 12rem;
+      bottom: 9.4rem;
+      right: 0.8rem;
+    }
+
+    :global(.page-map.full .maplibregl-ctrl-attrib) {
+      font-size: 0.6rem;
     }
   }
 
