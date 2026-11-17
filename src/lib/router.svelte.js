@@ -3,7 +3,9 @@
 
 import { tick } from "svelte";
 
-export const router = $state({ path: "/", params: {} });
+// Gleich beim Start aus der Adresse lesen: Wer #/karte öffnet, soll nicht erst die Startseite aufbauen
+const startPath = typeof location === "undefined" ? "/" : location.hash.replace(/^#/, "").split("?")[0] || "/";
+export const router = $state({ path: startPath, params: {} });
 
 // Die Startseite ("Projekt") ist eine einzige lange Seite: "/" ist der Anfang, "/projekt" springt zu den Fakten.
 // Eigene Seiten sind die interaktive Karte, die Statistik und die Erklärung.

@@ -3,12 +3,14 @@
   // Die Karte selbst wird erst aufgebaut, wenn die Szene in Sicht kommt (oder der Browser Pause hat),
   // damit der Start der Seite flüssig bleibt.
   import { onMount } from "svelte";
-  import { scene } from "../lib/scenes.js";
+  import { scene, isPhone } from "../lib/scenes.js";
   import MapPage from "../pages/MapPage.svelte";
 
   let { trips, stations } = $props();
 
   let mapOn = $state(false);
+  // Handy: nur die Karte, fertig gezeichnet, ohne Zeitleiste und Bedienfelder, damit man mehr davon sieht
+  const bare = isPhone();
 
   function onProgress(p, inn) {
     if (inn > 0.02) mapOn = true;
@@ -46,7 +48,7 @@
         <div class="car">
           <div class="glass">
             {#if mapOn}
-              <MapPage {trips} {stations} />
+              <MapPage {trips} {stations} {bare} />
             {:else}
               <div class="wait">Karte wird aufgebaut …</div>
             {/if}
@@ -213,6 +215,19 @@
     background:
       linear-gradient(var(--muted), var(--muted)) 0 0.875rem / 100% 0.1875rem no-repeat,
       repeating-linear-gradient(90deg, #c8ced6 0 0.3125rem, transparent 0.3125rem 1.25rem) 0 1.0625rem / 100% 0.4375rem no-repeat;
+  }
+
+  /* Handy: größeres Kartenfenster, der Vollbild-Knopf bleibt sichtbar */
+  :global(.stack.phone) .glass {
+    height: min(68svh, 36rem);
+  }
+
+  :global(.stack.phone) .open {
+    display: inline-flex;
+  }
+
+  :global(.stack.phone) .aside .sub {
+    display: block;
   }
 
   @media (max-width: 860px) {

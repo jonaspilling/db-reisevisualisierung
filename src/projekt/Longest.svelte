@@ -2,7 +2,7 @@
   // Längste Fahrt (München–Lille) und kürzeste Fahrt (Railjet) in einem Kapitel.
   // Erst läuft die längste Fahrt: die Linie wird nach Zügen eingefärbt (ICE in DB-Rot, TGV im Rosa von TGV inOui).
   // Dann blendet die Szene in den Stil des Railjets über: die kürzeste Fahrt als Fahrkarte, dazu die Anbieter des Jahres.
-  import { scene } from "../lib/scenes.js";
+  import { scene, isStill } from "../lib/scenes.js";
   import { shortName } from "../lib/facts.js";
   import { formatDuration } from "../lib/data.js";
   import { projectTrips } from "../lib/project.js";
@@ -57,13 +57,15 @@
     .map((k) => ({ key: k, n: story.operators[k].legs.length, label: OP_LABEL[k] }))
     .filter((m) => m.n > 0);
 
+  // Ohne Scroll-Animation (Handy, reduzierte Bewegung) stehen beide Teile fertig untereinander
+  const still = isStill();
   let p = $state(0);
   let el = $state();
   let elB = $state();
   const fA = $derived(clamp((p - 0.04) / 0.42));
   // A blendet zuerst aus, dann kommt B herein: so liegen nie zwei Texte übereinander
-  const kA = $derived(bOn ? clamp((p - 0.5) / 0.06) : 0);
-  const k = $derived(bOn ? clamp((p - 0.55) / 0.08) : 0);
+  const kA = $derived(bOn && !still ? clamp((p - 0.5) / 0.06) : 0);
+  const k = $derived(bOn ? (still ? 1 : clamp((p - 0.55) / 0.08)) : 0);
   const fB = $derived(clamp((p - 0.64) / 0.3));
   const km = $derived(trip.km * fA);
 
@@ -462,6 +464,25 @@
   .rj-head {
     fill: #fff;
     stroke: #2a2d31;
+  }
+
+  /* Ohne Scroll-Animation: erst die längste Fahrt, darunter die Railjet-Fahrt als eigener Block in voller Breite */
+  :global(.stack.still) .path {
+    height: 18rem;
+    max-height: none;
+  }
+
+  :global(.stack.still) .railjet {
+    position: relative;
+    inset: auto;
+    grid-column: 1 / -1;
+    margin: 1.25rem calc(-1 * var(--pad)) calc(-1 * clamp(1.5rem, 4vh, 3rem));
+    padding: 2rem var(--pad);
+    overflow: hidden;
+  }
+
+  :global(.stack.still) .rj-path {
+    height: 15rem;
   }
 
   @media (max-width: 860px) {

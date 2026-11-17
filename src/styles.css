@@ -230,6 +230,36 @@ html.has-vt .page {
   }
 }
 
+/* Übergang für weite Sprünge (siehe lib/jump.js): liegt über der Seite, unter der Menü-Pille */
+.warp {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: grid;
+  place-items: center;
+  background: var(--red);
+  transform: translateY(100%);
+  pointer-events: all;
+}
+
+.warp-mark {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  height: 2.6rem;
+}
+
+.warp-mark i {
+  width: 0.55rem;
+  border-radius: 0.2rem;
+  background: #fff;
+}
+
+.warp-mark i:nth-child(1) { height: 45%; }
+.warp-mark i:nth-child(2) { height: 75%; }
+.warp-mark i:nth-child(3) { height: 100%; }
+.warp-mark i:nth-child(4) { height: 62%; }
+
 /* Einblenden beim Scrollen */
 .reveal {
   opacity: 0;

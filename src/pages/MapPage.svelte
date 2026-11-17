@@ -8,7 +8,7 @@
   import { shortName } from "../lib/facts.js";
 
   // full: die Kartenseite (ganzer Bildschirm). Sonst steckt die Karte in einem Fenster der Startseite.
-  let { trips, stations, full = false } = $props();
+  let { trips, stations, full = false, bare = false } = $props();
 
   // ---- Einstellungen ----------------------------------------------------
   const STYLE_URL = "https://tiles.openfreemap.org/styles/positron"; // freie Vektorkarte, kein Schlüssel nötig
@@ -175,7 +175,8 @@
   // Die Breite aus dem Feature-State dient nur als Schalter (0 = Stück nicht gefahren, nicht zeichnen).
   const LINE_W = ["coalesce", ["feature-state", "w"], 0];
   const onW = (v, extra) => ["case", [">", LINE_W, 0], ["+", ["*", v, SC], extra * SC], 0];
-  const lineWidthExpr = (flatMode, extra = 0, fw = lineW) =>
+  const LINE_3D = 3.4; // in 3D feste Breite: dort trägt die Mauer die Information, einstellbar ist die Breite nur in 2D
+  const lineWidthExpr = (flatMode, extra = 0, fw = flatMode ? lineW : LINE_3D) =>
     flatMode
       ? onW(fw, extra)
       : [
@@ -185,11 +186,11 @@
           ["linear"],
           ["zoom"],
           4,
-          onW(fw * 0.55, extra),
+          onW(fw * 0.75, extra),
           7,
-          onW(fw * 0.85, extra),
+          onW(fw, extra),
           8.2,
-          onW(fw * 0.85, extra),
+          onW(fw, extra),
           9.2,
           onW(fw, extra),
         ];
@@ -996,14 +997,14 @@
   const KEEP = new Set(["background", "water", "boundary_2", "boundary_3"]);
   const SETTLEMENT_COLOR = "#cdd2d9"; // Stadtflächen: neutrales Grau
   const WATER_COLOR = "#d2dde8"; // Wasserflächen: helles Grau-Blau
-  const RIVER_COLOR = "#b9cbdc"; // Flüsse etwas kräftiger, damit sie als Linie lesbar bleiben
-  const BORDER_COUNTRY = "#9aa5b8"; // Ländergrenzen: kühles Schiefergrau, in die Karte gelegt
-  const BORDER_REGION = "#c5ccd8";
+  const RIVER_COLOR = "#7fa9cf"; // Flüsse: klares Blau (die einzige Farbe mit Blauton auf der Karte)
+  const BORDER_COUNTRY = "#8a6f8f"; // Ländergrenzen: gedecktes Malve, deutlich anders als Gleise (grau) und Flüsse (blau)
+  const BORDER_REGION = "#cdbfd0";
   const TEXT_LIGHT = "#3c4452"; // Namen auf der hellen Karte
   const HALO_LIGHT = "rgba(255,255,255,0.92)";
   const TEXT_SAT = "#ffffff"; // Namen auf Satellitenbildern: weiß mit dunklem Rand
   const HALO_SAT = "rgba(8,12,20,0.88)";
-  const RAIL_COLOR = "#b5bbc5"; // Streckennetz: helleres Grau, nur Hintergrund
+  const RAIL_COLOR = "#9aa1ad"; // Gleisnetz: neutrales Grau, dünn // Streckennetz: helleres Grau, nur Hintergrund
 
   function simplify(base) {
     const style = JSON.parse(JSON.stringify(base));
@@ -1023,7 +1024,7 @@
       if (l.id === "boundary_2") {
         l.paint["line-color"] = BORDER_COUNTRY;
         l.paint["line-opacity"] = 1;
-        l.paint["line-width"] = zw(3, 0.9, 7, 1.6, 11, 2.4);
+        l.paint["line-width"] = zw(3, 1.1, 7, 1.9, 11, 2.9);
       }
     }
     // Flüsse und Kanäle: schmale Linien im selben Hellgrau-Blau wie die Wasserflächen, etwas dunkler
@@ -1036,7 +1037,7 @@
       minzoom: 5,
       filter: ["in", ["get", "class"], ["literal", ["river", "canal"]]],
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": RIVER_COLOR, "line-width": zw(5, 0.6, 9, 1.4, 13, 3.2) },
+      paint: { "line-color": RIVER_COLOR, "line-width": zw(5, 0.9, 9, 2.2, 13, 4.6) },
     });
 
     // Kartenseite: Stadtflächen (Ballungsräume) und das europäische Streckennetz als eigene Ebenen.
@@ -1232,47 +1233,52 @@
     return style;
   }
 
-  // Rechte Maustaste (oder Strg + Ziehen): seitwärts dreht die Karte, hoch und runter neigt sie.
-  // Die Richtung wird nach den ersten Pixeln gewählt und bleibt für diese Bewegung gesperrt, damit nichts
-  // zugleich wackelt. Mit gedrückter Umschalttaste geht beides zusammen. In 2D wird nur gedreht.
+  // Rechte (oder mittlere) Maustaste, oder Strg + Ziehen: Die Karte dreht und neigt sich um den Punkt unter dem
+  // Mauszeiger, der dabei an seiner Stelle bleibt, und folgt der Hand weich statt ruckartig.
+  // Ziehen nach rechts oder links dreht, nach oben neigt flacher zum Horizont, nach unten wieder zur Draufsicht.
+  // Umschalt hält die Neigung fest (nur drehen), Alt hält die Drehung fest (nur neigen). In 2D wird nur gedreht.
   function setupRotateDrag() {
     const el = map.getCanvasContainer();
     el.addEventListener("contextmenu", (e) => e.preventDefault());
+    el.addEventListener("auxclick", (e) => e.preventDefault());
     let g = null;
-    let raf = 0;
-    const apply = () => {
-      raf = 0;
-      if (g && g.axis) map.jumpTo({ bearing: g.bearing, pitch: g.pitch });
+    const run = () => {
+      if (!g) return;
+      g.cb += (g.tb - g.cb) * 0.3;
+      g.cp += (g.tp - g.cp) * 0.3;
+      map.jumpTo({ bearing: g.cb, pitch: g.cp });
+      // Den Drehpunkt unter dem Mauszeiger festhalten
+      const pr = map.project(g.pivot);
+      map.panBy([pr.x - g.pt.x, pr.y - g.pt.y], { animate: false });
+      if (Math.abs(g.tb - g.cb) > 0.04 || Math.abs(g.tp - g.cp) > 0.04 || g.held) g.raf = requestAnimationFrame(run);
+      else g.raf = 0;
     };
     el.addEventListener("pointerdown", (e) => {
-      if (!(e.button === 2 || (e.button === 0 && e.ctrlKey))) return;
+      if (!(e.button === 2 || e.button === 1 || (e.button === 0 && (e.ctrlKey || e.metaKey)))) return;
       e.preventDefault();
       map.stop();
-      g = { id: e.pointerId, x: e.clientX, y: e.clientY, b0: map.getBearing(), p0: map.getPitch(), axis: null, bearing: map.getBearing(), pitch: map.getPitch() };
+      const rect = el.getBoundingClientRect();
+      const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      let pivot = map.unproject([pt.x, pt.y]);
+      if (!Number.isFinite(pivot.lng) || !Number.isFinite(pivot.lat)) pivot = map.getCenter();
+      g = { id: e.pointerId, x0: e.clientX, y0: e.clientY, b0: map.getBearing(), p0: map.getPitch(), pt, pivot, cb: map.getBearing(), cp: map.getPitch(), tb: map.getBearing(), tp: map.getPitch(), held: true, raf: 0 };
       el.setPointerCapture(e.pointerId);
+      userMoved = true;
+      follow = false;
+      orbit = false;
     });
     el.addEventListener("pointermove", (e) => {
       if (!g || e.pointerId !== g.id) return;
-      const dx = e.clientX - g.x;
-      const dy = e.clientY - g.y;
-      if (!g.axis) {
-        if (Math.max(Math.abs(dx), Math.abs(dy)) < 7) return;
-        g.axis = !is3D ? "x" : e.shiftKey ? "xy" : Math.abs(dx) > Math.abs(dy) * 1.15 ? "x" : "y";
-        // Von hier an zählt die Bewegung, damit die Karte beim Einrasten nicht springt
-        g.x = e.clientX;
-        g.y = e.clientY;
-        userMoved = true;
-        follow = false;
-        orbit = false;
-        return;
-      }
-      if (g.axis !== "y") g.bearing = g.b0 + (e.clientX - g.x) * 0.3;
-      if (g.axis !== "x") g.pitch = Math.max(0, Math.min(75, g.p0 - (e.clientY - g.y) * 0.3));
-      if (!raf) raf = requestAnimationFrame(apply);
+      const dx = e.clientX - g.x0;
+      const dy = e.clientY - g.y0;
+      g.tb = e.altKey ? g.b0 : g.b0 + dx * 0.35;
+      g.tp = !is3D || e.shiftKey ? g.p0 : Math.max(0, Math.min(75, g.p0 - dy * 0.32));
+      if (!g.raf) g.raf = requestAnimationFrame(run);
     });
     const end = (e) => {
       if (!g || e.pointerId !== g.id) return;
       if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+      g.held = false; // die Bewegung läuft noch kurz aus
       g = null;
     };
     el.addEventListener("pointerup", end);
@@ -1342,7 +1348,7 @@
       setFocus();
       ready = true;
       // Beim Laden einmal alles durchlaufen lassen (außer bei reduzierter Bewegung)
-      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (!bare && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         setTimeout(() => {
           if (u === 0 && !dragging) playing = true;
         }, 900);
@@ -1716,7 +1722,7 @@
 </script>
 
 
-<div class="page-map" class:full>
+<div class="page-map" class:full class:bare>
   <div class="stage" bind:clientWidth={stageW}>
     <div class="map" bind:this={mapEl}></div>
 
@@ -1805,10 +1811,12 @@
                     <input type="range" min="0.3" max="2.6" step="0.1" bind:value={wallScale} aria-label="Mauerhöhe" />
                   </label>
                 {/if}
-                <label class="slide">
-                  <span>Linienbreite <b>{lineW.toFixed(1)}</b></span>
-                  <input type="range" min="1.5" max="8" step="0.1" bind:value={lineW} aria-label="Linienbreite" />
-                </label>
+                {#if !is3D}
+                  <label class="slide">
+                    <span>Linienbreite <b>{lineW.toFixed(1)} px</b></span>
+                    <input type="range" min="1" max="24" step="0.5" bind:value={lineW} aria-label="Linienbreite" />
+                  </label>
+                {/if}
               </section>
               <section class="grp">
                 <h3>Kamera</h3>
@@ -1823,7 +1831,7 @@
                 </label>
                 <button type="button" class="reset" onclick={resetView}>Ansicht zurücksetzen</button>
               </section>
-              <p class="hint hint-mouse">Ziehen verschiebt, das Mausrad zoomt. Rechte Maustaste halten und seitwärts ziehen dreht die Karte, hoch und runter neigt sie (mit Umschalt beides zugleich).</p>
+              <p class="hint hint-mouse">Ziehen verschiebt, das Mausrad zoomt. Rechte Maustaste halten und ziehen: seitwärts dreht die Karte, hoch und runter neigt sie (mit Umschalt nur drehen, mit Alt nur neigen).</p>
               <p class="hint hint-touch">Mit einem Finger verschieben, mit zwei Fingern zoomen, drehen und neigen.</p>
             {:else}
               <div class="trips-actions">
@@ -3038,6 +3046,25 @@
       display: none;
     }
 
+    /* Zeitleiste schlank: Datum, Abspielen und Leiste; Tempo und Monatsnamen entfallen */
+    .full .dock .speeds,
+    .full .dock .months {
+      display: none;
+    }
+
+    .full .dock {
+      padding: 0.65rem 0.95rem 0.7rem;
+    }
+
+    .full .dock .row {
+      flex-wrap: nowrap;
+    }
+
+    .full .dock .scrub {
+      order: 0;
+      flex-basis: auto;
+    }
+
     .side {
       top: 4.4rem;
       right: 0.8rem;
@@ -3059,7 +3086,7 @@
     }
 
     :global(.page-map.full .maplibregl-ctrl-top-right) {
-      bottom: 12.6rem;
+      bottom: 8.8rem;
       left: 0.8rem;
     }
 
@@ -3138,6 +3165,25 @@
 
   :global(.page-map .maplibregl-ctrl-attrib a) {
     color: var(--muted);
+  }
+
+  /* Karte ohne Bedienfelder (Handy, Startseite): nur die Karte, die Quellenangabe in der Ecke */
+  .bare .dock,
+  .bare .info,
+  .bare .mode {
+    display: none;
+  }
+
+  :global(.page-map.bare .maplibregl-ctrl-bottom-right) {
+    bottom: 0.3rem;
+  }
+
+  /* Touchgeräte zoomen mit zwei Fingern: die Plus/Minus-Knöpfe nehmen nur Platz weg, der Kompass bleibt */
+  @media (pointer: coarse) {
+    :global(.page-map .maplibregl-ctrl-zoom-in),
+    :global(.page-map .maplibregl-ctrl-zoom-out) {
+      display: none;
+    }
   }
 
   /* ---- Schmales Fenster ---- */

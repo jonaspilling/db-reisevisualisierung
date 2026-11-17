@@ -58,5 +58,55 @@ export function flyTo(target) {
 // Ans Ende der Startseite: Projektbeschreibung und Kontakt
 export function jumpToInfo() {
   const el = document.getElementById("info");
-  if (el) flyTo(() => el.getBoundingClientRect().top + window.scrollY);
+  if (el) goTo(() => el.getBoundingClientRect().top + window.scrollY);
+}
+
+
+// ---------------------------------------------------------------------------------------------------------------
+// Weiter weg liegende Ziele: kein Durchscrollen (dabei würde jede Szene dazwischen abgespielt), sondern ein
+// Übergang. Eine rote Fläche schiebt sich über die Seite, darunter springt die Seite sofort ans Ziel, dann schiebt
+// sich die Fläche weiter und gibt das Ziel frei. Nahe Ziele (weniger als zwei Bildschirme) fliegen wie bisher.
+let warping = false;
+
+export function goTo(target) {
+  const root = document.documentElement;
+  const dest = () => Math.max(0, Math.min(root.scrollHeight - window.innerHeight, typeof target === "function" ? target() : target));
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const dist = dest() - window.scrollY;
+
+  if (reduce) {
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, dest());
+    root.style.scrollBehavior = "";
+    return;
+  }
+  if (Math.abs(dist) < window.innerHeight * 2) return flyTo(target);
+  if (warping) return;
+  warping = true;
+  if (stop) stop();
+
+  const down = dist > 0;
+  const el = document.createElement("div");
+  el.className = "warp";
+  el.setAttribute("aria-hidden", "true");
+  el.innerHTML = '<span class="warp-mark"><i></i><i></i><i></i><i></i></span>';
+  document.body.append(el);
+
+  const ease = "cubic-bezier(0.7, 0, 0.3, 1)";
+  const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  el.animate([{ transform: `translateY(${down ? 100 : -100}%)` }, { transform: "translateY(0)" }], { duration: 420, easing: ease, fill: "forwards" })
+    .finished.then(async () => {
+      root.style.scrollBehavior = "auto";
+      window.scrollTo(0, dest());
+      await frame();
+      window.scrollTo(0, dest()); // nach dem ersten Bild noch einmal: Höhe und Szenen haben sich eingestellt
+      await frame();
+      root.style.scrollBehavior = "";
+      await el.animate([{ transform: "translateY(0)" }, { transform: `translateY(${down ? -100 : 100}%)` }], { duration: 520, easing: ease, fill: "forwards" }).finished;
+    })
+    .catch(() => {})
+    .finally(() => {
+      el.remove();
+      warping = false;
+    });
 }

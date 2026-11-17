@@ -101,7 +101,9 @@
     display: grid;
     gap: clamp(1.25rem, 3.5vh, 2.25rem);
     justify-items: start;
-    max-width: min(46rem, 52vw);
+    /* Der Text endet vor dem dunklen Feld rechts (dessen Breite steht unten bei .backdrop): sonst läuft er beim
+       Schmalerziehen in die Animation hinein */
+    max-width: min(46rem, calc(100vw - min(54vw, 55rem) - var(--pad) - 1.5rem));
   }
 
   .hero :global(.say) {

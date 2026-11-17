@@ -14,6 +14,15 @@ const clamp = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 export const prefersReducedMotion = () =>
   typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+// Handy: schmaler Bildschirm, oder niedrig und breit auf einem Touchgerät (quer gehalten).
+// Dort laufen keine Scroll-Szenen mit angehefteter Bühne (das Scrollen mit dem Daumen fühlt sich damit falsch an),
+// sondern normale Abschnitte untereinander, die beim Erscheinen einblenden.
+export const isPhone = () =>
+  typeof matchMedia === "function" && matchMedia("(max-width: 760px), (max-height: 520px) and (pointer: coarse)").matches;
+
+// Keine Scroll-Animation: bei reduzierter Bewegung und auf dem Handy
+export const isStill = () => prefersReducedMotion() || isPhone();
+
 function update() {
   raf = 0;
   const vh = window.innerHeight;
@@ -59,8 +68,8 @@ function unbind() {
 
 // Svelte-Action:  <section class="scene" use:scene={(p, inn, out) => ...}>
 export function scene(node, cb) {
-  if (prefersReducedMotion()) {
-    // Ohne Bewegung: jede Szene steht fertig da (Layout regelt .still am Container).
+  if (isStill()) {
+    // Ohne Scroll-Animation: jede Szene steht fertig da (Layout regelt .still am Container).
     node.style.setProperty("--p", "1");
     node.style.setProperty("--in", "1");
     node.style.setProperty("--out", "0");

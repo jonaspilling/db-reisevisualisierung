@@ -168,6 +168,43 @@
   }
 }
 
+/* Handy: normale Abschnitte untereinander statt angehefteter Bühnen. Kein Leerraum, der Inhalt bestimmt die Höhe;
+   jeder Abschnitt blendet seine Teile nacheinander ein, sobald er sichtbar wird. */
+.stack.phone .sc-stage {
+  min-height: 0;
+  padding-top: 2.75rem;
+  padding-bottom: 2.75rem;
+  gap: 1.1rem;
+}
+
+.stack.phone .scene:first-child .sc-stage {
+  min-height: 100svh;
+  padding-top: calc(var(--bar-h) + 0.5rem);
+}
+
+.stack.phone .scene:not(.hero) .sc-stage > * {
+  opacity: 0;
+  transform: translateY(1.25rem);
+  transition: opacity 600ms var(--ease), transform 600ms var(--ease);
+}
+
+.stack.phone .scene:not(.hero) .sc-stage.seen > * {
+  opacity: 1;
+  transform: none;
+}
+
+.stack.phone .sc-stage.seen > :nth-child(2) {
+  transition-delay: 90ms;
+}
+
+.stack.phone .sc-stage.seen > :nth-child(3) {
+  transition-delay: 180ms;
+}
+
+.stack.phone .sc-stage.seen > :nth-child(n + 4) {
+  transition-delay: 270ms;
+}
+
 /* Der rote Abschluss geht ohne weißen Streifen in die Fußzeile über */
 .page:has(.outro) + .footer {
   margin-top: 0;

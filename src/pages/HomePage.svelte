@@ -3,8 +3,8 @@
   import { onMount } from "svelte";
   import "../projekt/projekt.css";
   import { buildStory } from "../lib/story.js";
-  import { prefersReducedMotion } from "../lib/scenes.js";
-  import { flyTo } from "../lib/jump.js";
+  import { prefersReducedMotion, isPhone, isStill } from "../lib/scenes.js";
+  import { goTo } from "../lib/jump.js";
   import { router, view, replaceHash, isHomePath } from "../lib/router.svelte.js";
   import Hero from "../projekt/Hero.svelte";
   import KartenScene from "../projekt/KartenScene.svelte";
@@ -24,7 +24,9 @@
 
   const story = $derived(buildStory(trips, stations));
   // Wer Bewegung abgeschaltet hat, bekommt dieselben Szenen als ruhige Abschnitte untereinander
-  const still = prefersReducedMotion();
+  const still = isStill();
+  // Handy: ruhige Abschnitte, die beim Erscheinen einblenden (bei reduzierter Bewegung stehen sie einfach da)
+  const phone = isPhone() && !prefersReducedMotion();
 
   let stackEl;
 
@@ -37,11 +39,28 @@
 
   function scrollToSection(section, smooth) {
     const at = () => (section === "facts" ? sceneY(2) : section === "map" ? sceneY(1) : 0);
-    if (smooth) flyTo(at);
+    if (smooth) goTo(at);
     else window.scrollTo({ top: at(), behavior: "instant" });
   }
 
   onMount(() => {
+    // Handy: Abschnitte einblenden, sobald sie ins Bild kommen
+    let io;
+    if (phone && stackEl) {
+      io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (e.isIntersecting) {
+              e.target.classList.add("seen");
+              io.unobserve(e.target);
+            }
+          }
+        },
+        { threshold: 0.12 }
+      );
+      stackEl.querySelectorAll(".sc-stage").forEach((el) => io.observe(el));
+    }
+
     // Direkter Einstieg über #/projekt: gleich zu den Fakten, sobald das Layout steht
     if (router.path === "/projekt") {
       requestAnimationFrame(() => requestAnimationFrame(() => scrollToSection("facts", false)));
@@ -68,6 +87,7 @@
     window.addEventListener("scroll", onScroll, { passive: true });
     spy();
     return () => {
+      io?.disconnect();
       window.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(raf);
       view.zone = "top";
@@ -93,7 +113,7 @@
   });
 </script>
 
-<div class="stack" class:still bind:this={stackEl}>
+<div class="stack" class:still class:phone bind:this={stackEl}>
   <Hero {story} />
   <KartenScene {trips} {stations} />
   <LineScene {story} />
