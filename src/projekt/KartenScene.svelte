@@ -134,9 +134,9 @@
     display: grid;
     grid-template-rows: minmax(0, 1fr) auto;
     height: 100%;
-    padding: 12px 12px 0;
+    padding: 0.75rem 0.75rem 0;
     background: var(--panel-2);
-    border-radius: 46px 46px 16px 16px;
+    border-radius: 2.875rem 2.875rem 1rem 1rem;
     box-shadow: 0 0 0 1px var(--line);
   }
 
@@ -144,8 +144,8 @@
   .glass {
     position: relative;
     min-height: 0;
-    border: 6px solid var(--text);
-    border-radius: 34px 34px 20px 20px;
+    border: 0.375rem solid var(--text);
+    border-radius: 2.125rem 2.125rem 1.25rem 1.25rem;
     overflow: hidden;
     background: var(--bg);
   }
@@ -166,9 +166,9 @@
 
   /* Der Zierstreifen: eine flache rote Fläche über die ganze Länge */
   .stripe {
-    height: 9px;
+    height: 0.5625rem;
     background: var(--red);
-    border-radius: 5px;
+    border-radius: 0.3125rem;
   }
 
   .plate {
@@ -190,9 +190,9 @@
   /* Zwei Drehgestelle: dunkle Räder mit rotem Ring, sie drehen sich mit der Einfahrt */
   .bogies i {
     position: absolute;
-    bottom: -15px;
-    width: 30px;
-    height: 30px;
+    bottom: -0.9375rem;
+    width: 1.875rem;
+    height: 1.875rem;
     border-radius: 50%;
     background: radial-gradient(circle, #fff 0 18%, var(--red) 18% 34%, var(--text) 34%);
     transform: rotate(calc((1 - var(--arrive)) * -1100deg));
@@ -208,11 +208,11 @@
 
   /* Die Schiene: eine Linie mit Schwellen darunter, über die volle Breite bis an den Rand */
   .rail {
-    height: 28px;
+    height: 1.75rem;
     margin-inline: calc(var(--pad) * -1);
     background:
-      linear-gradient(var(--muted), var(--muted)) 0 14px / 100% 3px no-repeat,
-      repeating-linear-gradient(90deg, #c8ced6 0 5px, transparent 5px 20px) 0 17px / 100% 7px no-repeat;
+      linear-gradient(var(--muted), var(--muted)) 0 0.875rem / 100% 0.1875rem no-repeat,
+      repeating-linear-gradient(90deg, #c8ced6 0 0.3125rem, transparent 0.3125rem 1.25rem) 0 1.0625rem / 100% 0.4375rem no-repeat;
   }
 
   @media (max-width: 860px) {
@@ -230,13 +230,13 @@
     }
 
     .car {
-      border-radius: 32px 32px 14px 14px;
-      padding: 9px 9px 0;
+      border-radius: 2rem 2rem 0.875rem 0.875rem;
+      padding: 0.5625rem 0.5625rem 0;
     }
 
     .glass {
-      border-width: 5px;
-      border-radius: 24px 24px 14px 14px;
+      border-width: 0.3125rem;
+      border-radius: 1.5rem 1.5rem 0.875rem 0.875rem;
     }
 
     .livery {
@@ -244,16 +244,16 @@
     }
 
     .bogies i {
-      width: 26px;
-      height: 26px;
-      bottom: -13px;
+      width: 1.625rem;
+      height: 1.625rem;
+      bottom: -0.8125rem;
     }
 
     .rail {
-      height: 24px;
+      height: 1.5rem;
       background:
-        linear-gradient(var(--muted), var(--muted)) 0 12px / 100% 3px no-repeat,
-        repeating-linear-gradient(90deg, #c8ced6 0 5px, transparent 5px 20px) 0 15px / 100% 6px no-repeat;
+        linear-gradient(var(--muted), var(--muted)) 0 0.75rem / 100% 0.1875rem no-repeat,
+        repeating-linear-gradient(90deg, #c8ced6 0 0.3125rem, transparent 0.3125rem 1.25rem) 0 0.9375rem / 100% 0.375rem no-repeat;
     }
   }
 </style>

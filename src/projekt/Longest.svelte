@@ -244,13 +244,13 @@
   .chip.db {
     background: var(--red);
     color: #fff;
-    border-radius: 6px;
+    border-radius: 0.375rem;
   }
 
   .chip.sncf {
     background: #ff6fae;
     color: #1b1133;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     font-family: "Poppins", var(--sans);
     font-weight: 700;
   }
@@ -258,7 +258,7 @@
   .chip.oebb {
     background: #fff;
     color: #2a2d31;
-    border-radius: 6px;
+    border-radius: 0.375rem;
   }
 
   .path {
@@ -408,15 +408,15 @@
 
   .bar {
     display: flex;
-    gap: 3px;
+    gap: 0.1875rem;
     height: clamp(1.4rem, 3.4vh, 2rem);
     overflow: hidden;
   }
 
   .bar i {
     display: block;
-    border-radius: 4px;
-    min-width: 6px;
+    border-radius: 0.25rem;
+    min-width: 0.375rem;
   }
 
   .legend {
@@ -435,9 +435,9 @@
   }
 
   .legend i {
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 0.1875rem;
   }
 
   .rj-fine {

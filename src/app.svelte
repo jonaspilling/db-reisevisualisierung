@@ -77,7 +77,7 @@
   /* Ladebalken in DB-Rot */
   .loader {
     width: 9rem;
-    height: 4px;
+    height: 0.25rem;
     border-radius: var(--r);
     background: var(--panel-2);
     overflow: hidden;

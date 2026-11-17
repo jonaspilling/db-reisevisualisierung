@@ -96,10 +96,10 @@
   }
 
   .duo {
-    width: 34px;
-    height: 24px;
+    width: 2.125rem;
+    height: 1.5rem;
     margin-top: 0.15rem;
-    border-radius: 7px;
+    border-radius: 0.4375rem;
     background: linear-gradient(115deg, #0a4aa0 0 50%, #ffd500 50% 100%);
     box-shadow: 0 0 0 1px rgba(40, 45, 55, 0.12);
   }

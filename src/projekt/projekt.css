@@ -126,7 +126,7 @@
 /* Ein Element, das sich mit --p in einem Abschnitt [a, b] einblendet: style="--a:.2;--b:.5" */
 .fade {
   opacity: clamp(0, calc((var(--p, 1) - var(--a, 0)) / (var(--b, 0.1) - var(--a, 0))), 1);
-  transform: translateY(calc((1 - clamp(0, calc((var(--p, 1) - var(--a, 0)) / (var(--b, 0.1) - var(--a, 0))), 1)) * 18px));
+  transform: translateY(calc((1 - clamp(0, calc((var(--p, 1) - var(--a, 0)) / (var(--b, 0.1) - var(--a, 0))), 1)) * 1.125rem));
 }
 
 /* Keine Bewegung gewünscht: alles steht fertig, Szenen sind normale Blöcke */

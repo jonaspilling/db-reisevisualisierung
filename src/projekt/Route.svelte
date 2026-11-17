@@ -61,9 +61,9 @@
     inset: 0;
     transform-origin: 0 50%;
     background:
-      linear-gradient(#fff, #fff) top / 100% 3px no-repeat,
-      linear-gradient(#fff, #fff) bottom / 100% 3px no-repeat,
-      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.85) 0 4px, transparent 4px 18px) center / 100% 70% no-repeat;
+      linear-gradient(#fff, #fff) top / 100% 0.1875rem no-repeat,
+      linear-gradient(#fff, #fff) bottom / 100% 0.1875rem no-repeat,
+      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.85) 0 0.25rem, transparent 0.25rem 1.125rem) center / 100% 70% no-repeat;
   }
 
   /* Zugnummer am Ende des Gleises */
@@ -85,10 +85,10 @@
 
   .loco {
     position: absolute;
-    top: -3px;
-    bottom: -3px;
+    top: -0.1875rem;
+    bottom: -0.1875rem;
     width: 3.4rem;
-    border-radius: 10px 18px 18px 10px;
+    border-radius: 0.625rem 1.125rem 1.125rem 0.625rem;
     background: #fff;
   }
 

@@ -23,6 +23,9 @@
   const POLE_MAX = 95000; // Obergrenze, damit Knotenpunkte nicht aus dem Bild ragen
   const SPR_K = 150; // Feder: Steifigkeit
   const SPR_D = 11; // Feder: Dämpfung (unterkritisch: die Stäbe schießen hoch und federn kurz nach)
+  // Große Bildschirme: Linien, Schrift und Punkte der Karte wachsen mit (die Seite skaliert über rem)
+  const SC = typeof window === "undefined" ? 1 : Math.min(2.6, Math.max(1, window.innerWidth / 1920));
+  const zw = (...st) => ["interpolate", ["linear"], ["zoom"], ...st.map((v, i) => (i % 2 === 1 ? v * SC : v))];
   const PITCH_3D = 38;
   const BEARING_3D = -10;
 
@@ -170,7 +173,7 @@
   // In 2D ist jede Linie gleich dick, in jedem Zoom; die Häufigkeit zeigt nur die Farbe.
   // Die Breite aus dem Feature-State dient nur als Schalter (0 = Stück nicht gefahren, nicht zeichnen).
   const LINE_W = ["coalesce", ["feature-state", "w"], 0];
-  const onW = (v, extra) => ["case", [">", LINE_W, 0], ["+", v, extra], 0];
+  const onW = (v, extra) => ["case", [">", LINE_W, 0], ["+", ["*", v, SC], extra * SC], 0];
   const lineWidthExpr = (flatMode, extra = 0, fw = lineW) =>
     flatMode
       ? onW(fw, extra)
@@ -1016,7 +1019,7 @@
       if (l.id === "boundary_2") {
         l.paint["line-color"] = BORDER_COUNTRY;
         l.paint["line-opacity"] = 1;
-        l.paint["line-width"] = ["interpolate", ["linear"], ["zoom"], 3, 0.9, 7, 1.6, 11, 2.4];
+        l.paint["line-width"] = zw(3, 0.9, 7, 1.6, 11, 2.4);
       }
     }
     // Flüsse und Kanäle: schmale Linien im selben Hellgrau-Blau wie die Wasserflächen, etwas dunkler
@@ -1029,7 +1032,7 @@
       minzoom: 5,
       filter: ["in", ["get", "class"], ["literal", ["river", "canal"]]],
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": RIVER_COLOR, "line-width": ["interpolate", ["linear"], ["zoom"], 5, 0.6, 9, 1.4, 13, 3.2] },
+      paint: { "line-color": RIVER_COLOR, "line-width": zw(5, 0.6, 9, 1.4, 13, 3.2) },
     });
 
     // Kartenseite: Stadtflächen (Ballungsräume) und das europäische Streckennetz als eigene Ebenen.
@@ -1061,7 +1064,7 @@
           layout: { "line-join": "round" },
           paint: {
             "line-color": SETTLEMENT_COLOR,
-            "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.6, 8, 2.4, 11, 5],
+            "line-width": zw(4, 0.6, 8, 2.4, 11, 5),
           },
         },
         {
@@ -1072,7 +1075,7 @@
           layout: { "line-cap": "round", "line-join": "round" },
           paint: {
             "line-color": RAIL_COLOR,
-            "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 6, 0.8, 9, 1.2],
+            "line-width": zw(3, 0.5, 6, 0.8, 9, 1.2),
             "line-opacity": ["interpolate", ["linear"], ["zoom"], 8.4, 1, 9.8, 0],
           },
         },
@@ -1086,7 +1089,7 @@
           layout: { "line-cap": "round", "line-join": "round" },
           paint: {
             "line-color": RAIL_COLOR,
-            "line-width": ["interpolate", ["linear"], ["zoom"], 8.4, 0.8, 12, 1.5, 15, 2.4],
+            "line-width": zw(8.4, 0.8, 12, 1.5, 15, 2.4),
             "line-opacity": ["interpolate", ["linear"], ["zoom"], 8.4, 0, 9.8, 1],
           },
         }
@@ -1109,7 +1112,7 @@
         layout: {
           "text-field": ["coalesce", ["get", "name:de"], ["get", "name"]],
           "text-font": ["Noto Sans Regular"],
-          "text-size": ["interpolate", ["linear"], ["zoom"], 3, 10, 6, 13],
+          "text-size": zw(3, 10, 6, 13),
           "text-transform": "uppercase",
           "text-letter-spacing": 0.14,
         },
@@ -1155,10 +1158,10 @@
         source: "stations",
         filter: [">", ["get", "n"], 0],
         paint: {
-          "circle-radius": ["min", 6, ["+", 2.4, ["*", 0.45, ["get", "n"]]]],
+          "circle-radius": ["min", 6 * SC, ["+", 2.4 * SC, ["*", 0.45 * SC, ["get", "n"]]]],
           "circle-color": "#ffffff",
           "circle-stroke-color": "#282d37",
-          "circle-stroke-width": 1.5,
+          "circle-stroke-width": 1.5 * SC,
         },
       },
       {
@@ -1169,7 +1172,7 @@
         layout: {
           "text-field": ["get", "name"],
           "text-font": ["Noto Sans Regular"],
-          "text-size": 12,
+          "text-size": 12 * SC,
           "text-anchor": "top",
           "text-offset": [0, 0.75],
           "symbol-sort-key": ["-", 0, ["get", "n"]],
@@ -1186,10 +1189,10 @@
         type: "circle",
         source: "heads",
         paint: {
-          "circle-radius": 6.5,
+          "circle-radius": 6.5 * SC,
           "circle-color": "#ec0016",
           "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2.5,
+          "circle-stroke-width": 2.5 * SC,
         },
       }
     );
@@ -1206,7 +1209,7 @@
         layout: {
           "text-field": ["coalesce", ["get", "name:de"], ["get", "name"]],
           "text-font": ["Noto Sans Regular"],
-          "text-size": ["interpolate", ["linear"], ["zoom"], ...sizes],
+          "text-size": zw(...sizes),
           "symbol-sort-key": ["coalesce", ["get", "rank"], 99],
           "text-padding": 4,
           "text-max-width": 7,
@@ -1500,7 +1503,7 @@
       if (!map.getLayer(id)) continue;
       map.setPaintProperty(id, "text-color", satellite ? TEXT_SAT : id === "countries" ? "#a3acb8" : id === "labels" ? "#282d37" : TEXT_LIGHT);
       map.setPaintProperty(id, "text-halo-color", satellite ? HALO_SAT : id === "countries" ? "#f5f6f7" : id === "labels" ? "#ffffff" : HALO_LIGHT);
-      map.setPaintProperty(id, "text-halo-width", satellite ? 2.2 : 1.6);
+      map.setPaintProperty(id, "text-halo-width", (satellite ? 2.2 : 1.6) * SC);
     }
     map.setPaintProperty("boundary_2", "line-color", satellite ? "#ffffff" : BORDER_COUNTRY);
     map.setPaintProperty("boundary_3", "line-color", satellite ? "rgba(255,255,255,0.6)" : BORDER_REGION);
@@ -1954,10 +1957,10 @@
     z-index: 800;
     top: 0.8rem;
     left: 0.8rem;
-    width: min(210px, calc(100% - 7rem));
+    width: min(13.125rem, calc(100% - 7rem));
     padding: 0.55rem 0.7rem 0.6rem;
     background: var(--bg);
-    border-radius: 14px;
+    border-radius: 0.875rem;
     box-shadow: 0 0 0 1px var(--line);
   }
 
@@ -1978,9 +1981,9 @@
   }
 
   .bar {
-    height: 8px;
+    height: 0.5rem;
     margin: 0.5rem 0 0.3rem;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     background: linear-gradient(90deg, rgb(58, 68, 98), rgb(168, 34, 92) 35%, rgb(226, 16, 48) 70%, rgb(255, 40, 20));
     box-shadow: inset 0 0 0 1px rgba(40, 45, 55, 0.12);
     box-shadow: inset 0 0 0 1px rgba(40, 45, 55, 0.12);
@@ -2004,16 +2007,16 @@
   }
 
   .swatch i.line {
-    height: 3px;
+    height: 0.1875rem;
     border-radius: 2px;
     box-shadow: none;
   }
 
   .swatch i {
     flex: none;
-    width: 18px;
-    height: 12px;
-    border-radius: 3px;
+    width: 1.125rem;
+    height: 0.75rem;
+    border-radius: 0.1875rem;
     box-shadow: inset 0 0 0 1px rgba(40, 45, 55, 0.14);
   }
 
@@ -2031,16 +2034,16 @@
     top: 0.8rem;
     right: 0.8rem;
     display: flex;
-    padding: 3px;
+    padding: 0.1875rem;
     background: var(--bg);
-    border-radius: 12px;
+    border-radius: 0.75rem;
     box-shadow: var(--shadow);
   }
 
   .mode button {
     min-width: 3.2rem;
     padding: 0.45rem 0.85rem;
-    border-radius: 9px;
+    border-radius: 0.5625rem;
     font-size: 0.95rem;
     font-weight: 700;
     color: var(--muted);
@@ -2067,20 +2070,20 @@
     top: 3.6rem;
     right: 0.8rem;
     bottom: 10rem;
-    width: 280px;
+    width: 17.5rem;
     display: flex;
     flex-direction: column;
     padding: 1rem 1.1rem;
     background: var(--bg);
-    border-radius: 16px;
-    box-shadow: 0 0 0 1px var(--line), 0 12px 28px -14px rgba(40, 45, 55, 0.35);
+    border-radius: 1rem;
+    box-shadow: 0 0 0 1px var(--line), 0 0.75rem 1.75rem -0.875rem rgba(40, 45, 55, 0.35);
     animation: d-in 380ms var(--ease);
   }
 
   @keyframes d-in {
     from {
       opacity: 0;
-      transform: translateX(14px);
+      transform: translateX(0.875rem);
     }
   }
 
@@ -2105,7 +2108,7 @@
     align-self: flex-start;
     flex: none;
     padding: 0.35rem 0.6rem;
-    border-radius: 8px;
+    border-radius: 0.5rem;
     font-size: 0.85rem;
     font-weight: 700;
     background: var(--panel);
@@ -2168,20 +2171,20 @@
   }
 
   .hover-inner {
-    width: 280px;
-    margin: 18px 0 0 18px;
+    width: 17.5rem;
+    margin: 1.125rem 0 0 1.125rem;
     padding: 0.85rem 1rem 0.95rem;
     background: var(--bg);
-    border-radius: 12px;
-    box-shadow: 0 0 0 1px var(--line), 0 12px 28px -14px rgba(40, 45, 55, 0.35);
+    border-radius: 0.75rem;
+    box-shadow: 0 0 0 1px var(--line), 0 0.75rem 1.75rem -0.875rem rgba(40, 45, 55, 0.35);
     opacity: 0;
-    transform: translateY(6px) scale(0.98);
+    transform: translateY(0.375rem) scale(0.98);
     transform-origin: top left;
     transition: opacity 360ms ease, transform 420ms var(--ease);
   }
 
   .hover-inner.flip {
-    margin-left: -298px;
+    margin-left: -18.625rem;
     transform-origin: top right;
   }
 
@@ -2286,8 +2289,8 @@
 
   /* Flaches Rot: eine Fläche, kein Schein */
   .play {
-    width: 48px;
-    height: 48px;
+    width: 3rem;
+    height: 3rem;
     border-radius: 50%;
     background: var(--red);
     color: var(--on-red);
@@ -2307,8 +2310,8 @@
   }
 
   .ghost {
-    width: 36px;
-    height: 36px;
+    width: 2.25rem;
+    height: 2.25rem;
     border-radius: 50%;
     background: var(--panel);
     display: grid;
@@ -2337,14 +2340,14 @@
 
   .scrub:focus-visible .rail {
     outline: 2px solid var(--text);
-    outline-offset: 3px;
+    outline-offset: 0.1875rem;
   }
 
   /* Der ganze 40-Pixel-Streifen ist greifbar, nicht nur der dünne Strich */
   .grab {
     position: relative;
-    height: 40px;
-    margin: 0 10px;
+    height: 2.5rem;
+    margin: 0 0.625rem;
     cursor: grab;
     touch-action: none;
     user-select: none;
@@ -2360,9 +2363,9 @@
     left: 0;
     right: 0;
     top: 50%;
-    height: 5px;
-    margin-top: -2.5px;
-    border-radius: 999px;
+    height: 0.3125rem;
+    margin-top: -0.15625rem;
+    border-radius: 62.4375rem;
     background: var(--panel-2);
   }
 
@@ -2370,9 +2373,9 @@
     position: absolute;
     left: 0;
     top: 50%;
-    height: 5px;
-    margin-top: -2.5px;
-    border-radius: 999px;
+    height: 0.3125rem;
+    margin-top: -0.15625rem;
+    border-radius: 62.4375rem;
     background: var(--red);
     pointer-events: none;
   }
@@ -2381,10 +2384,10 @@
   .seg {
     position: absolute;
     top: 50%;
-    height: 14px;
-    min-width: 5px;
-    margin-top: -7px;
-    border-radius: 5px;
+    height: 0.875rem;
+    min-width: 0.3125rem;
+    margin-top: -0.4375rem;
+    border-radius: 0.3125rem;
     background: #cfd4db;
     pointer-events: none;
     transition:
@@ -2399,21 +2402,21 @@
 
   .seg.current {
     background: var(--red);
-    height: 22px;
-    margin-top: -11px;
+    height: 1.375rem;
+    margin-top: -0.6875rem;
   }
 
   /* Der Griff: ein heller Knopf mit rotem Rand, ohne farbigen Schein */
   .handle {
     position: absolute;
     top: 50%;
-    width: 26px;
-    height: 26px;
+    width: 1.625rem;
+    height: 1.625rem;
     transform: translate(-50%, -50%);
     background: #fff;
-    border: 5px solid var(--red);
+    border: 0.3125rem solid var(--red);
     border-radius: 50%;
-    box-shadow: 0 2px 6px rgba(40, 45, 55, 0.28);
+    box-shadow: 0 2px 0.375rem rgba(40, 45, 55, 0.28);
     pointer-events: none;
     transition: scale 140ms var(--ease);
   }
@@ -2426,7 +2429,7 @@
   .months {
     position: relative;
     height: 1rem;
-    margin: 0 10px;
+    margin: 0 0.625rem;
     pointer-events: none;
   }
 
@@ -2444,14 +2447,14 @@
   .speeds {
     display: flex;
     flex-shrink: 0;
-    padding: 3px;
-    border-radius: 999px;
+    padding: 0.1875rem;
+    border-radius: 62.4375rem;
     background: var(--panel);
   }
 
   .speeds button {
     padding: 0.3rem 0.7rem;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     font-size: 0.85rem;
     font-weight: 700;
     color: var(--muted);
@@ -2467,7 +2470,7 @@
   .speeds button.on {
     background: var(--bg);
     color: var(--text);
-    box-shadow: 0 1px 4px rgba(40, 45, 55, 0.28);
+    box-shadow: 0 1px 0.25rem rgba(40, 45, 55, 0.28);
   }
 
   /* ---- Kartenseite: Legende links, ein Optionsfenster rechts ---- */
@@ -2476,7 +2479,7 @@
     z-index: 800;
     top: 1rem;
     left: 1rem;
-    width: min(250px, calc(100% - 7rem));
+    width: min(15.625rem, calc(100% - 7rem));
   }
 
   .left .info {
@@ -2494,14 +2497,14 @@
     z-index: 810;
     top: 4.6rem;
     right: 1rem;
-    width: min(332px, calc(100% - 2rem));
+    width: min(20.75rem, calc(100% - 2rem));
     max-height: calc(100% - 16.4rem);
     display: flex;
     flex-direction: column;
     font-size: 0.86rem;
     background: var(--bg);
-    border-radius: 18px;
-    box-shadow: 0 0 0 1px rgba(40, 45, 55, 0.06), 0 18px 40px -20px rgba(40, 45, 55, 0.4);
+    border-radius: 1.125rem;
+    box-shadow: 0 0 0 1px rgba(40, 45, 55, 0.06), 0 1.125rem 2.5rem -1.25rem rgba(40, 45, 55, 0.4);
     overflow: hidden;
   }
 
@@ -2518,7 +2521,7 @@
     gap: 0.5rem;
     padding: 0.62rem 1rem;
     background: var(--bg);
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     box-shadow: var(--shadow);
     font-weight: 800;
     font-size: 0.9rem;
@@ -2533,7 +2536,7 @@
   .side-head b {
     min-width: 1.4rem;
     padding: 0.05rem 0.4rem;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     background: var(--panel-2);
     font-size: 0.72rem;
     text-align: center;
@@ -2554,7 +2557,7 @@
     gap: 0.4rem;
     flex: 1;
     padding: 0.5rem 0.4rem;
-    border-radius: 11px;
+    border-radius: 0.6875rem;
     font-weight: 800;
     color: var(--muted);
     transition: background-color 140ms var(--ease), color 140ms var(--ease);
@@ -2605,14 +2608,14 @@
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
-    padding: 3px;
+    padding: 0.1875rem;
     background: var(--panel);
-    border-radius: 12px;
+    border-radius: 0.75rem;
   }
 
   .seg2 button {
     padding: 0.5rem 0.4rem;
-    border-radius: 9px;
+    border-radius: 0.5625rem;
     font-weight: 800;
     color: var(--muted);
     transition: background-color 140ms var(--ease), color 140ms var(--ease);
@@ -2621,7 +2624,7 @@
   .seg2 button.on {
     background: var(--bg);
     color: var(--text);
-    box-shadow: 0 1px 4px rgba(40, 45, 55, 0.18);
+    box-shadow: 0 1px 0.25rem rgba(40, 45, 55, 0.18);
   }
 
   .row-sw {
@@ -2637,9 +2640,9 @@
   .sw {
     position: relative;
     flex: none;
-    width: 36px;
-    height: 21px;
-    border-radius: 999px;
+    width: 2.25rem;
+    height: 1.3125rem;
+    border-radius: 62.4375rem;
     background: #cdd2d9;
     transition: background-color 160ms var(--ease);
   }
@@ -2647,13 +2650,13 @@
   .sw::after {
     content: "";
     position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 15px;
-    height: 15px;
+    top: 0.1875rem;
+    left: 0.1875rem;
+    width: 0.9375rem;
+    height: 0.9375rem;
     border-radius: 50%;
     background: #fff;
-    box-shadow: 0 1px 3px rgba(40, 45, 55, 0.35);
+    box-shadow: 0 1px 0.1875rem rgba(40, 45, 55, 0.35);
     transition: transform 160ms var(--ease);
   }
 
@@ -2662,7 +2665,7 @@
   }
 
   .sw.on::after {
-    transform: translateX(15px);
+    transform: translateX(0.9375rem);
   }
 
   .slide {
@@ -2699,7 +2702,7 @@
     width: 100%;
     padding: 0.45rem 0.6rem;
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: 0.625rem;
     background: var(--bg);
     font: inherit;
     color: var(--text);
@@ -2709,7 +2712,7 @@
     justify-self: start;
     margin-top: 0.3rem;
     padding: 0.42rem 0.8rem;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     background: var(--panel);
     font-weight: 700;
     font-size: 0.82rem;
@@ -2753,7 +2756,7 @@
 
   .trips-actions button {
     padding: 0.38rem 0.75rem;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     background: var(--panel);
     font-size: 0.8rem;
     font-weight: 700;
@@ -2785,7 +2788,7 @@
     gap: 0.65rem;
     width: 100%;
     padding: 0.45rem 0.4rem;
-    border-radius: 10px;
+    border-radius: 0.625rem;
     text-align: left;
     transition: background-color 140ms var(--ease);
   }
@@ -2796,10 +2799,10 @@
 
   .chk {
     position: relative;
-    width: 18px;
-    height: 18px;
+    width: 1.125rem;
+    height: 1.125rem;
     border: 2px solid #c3c9d0;
-    border-radius: 6px;
+    border-radius: 0.375rem;
     transition: background-color 140ms var(--ease), border-color 140ms var(--ease);
   }
 
@@ -2811,10 +2814,10 @@
   .trip.on .chk::after {
     content: "";
     position: absolute;
-    left: 4px;
+    left: 0.25rem;
     top: 0;
-    width: 5px;
-    height: 10px;
+    width: 0.3125rem;
+    height: 0.625rem;
     border-right: 2px solid #fff;
     border-bottom: 2px solid #fff;
     transform: rotate(40deg);
@@ -2850,14 +2853,14 @@
     left: 50%;
     right: auto;
     bottom: 1.5rem;
-    width: min(1040px, calc(100% - 2rem));
+    width: min(65rem, calc(100% - 2rem));
     transform: translateX(-50%);
     padding: 0.95rem 1.4rem 0.7rem;
     border-top: none;
-    border-radius: 24px;
+    border-radius: 1.5rem;
     box-shadow:
       0 0 0 1px rgba(40, 45, 55, 0.06),
-      0 20px 48px -18px rgba(40, 45, 55, 0.42);
+      0 1.25rem 3rem -1.125rem rgba(40, 45, 55, 0.42);
   }
 
   /* Details: links unter der Legende, damit das Optionsfenster rechts frei bleibt */
@@ -2866,14 +2869,14 @@
     bottom: 12.4rem;
     left: 1rem;
     right: auto;
-    width: 310px;
+    width: 19.375rem;
     animation-name: d-in-left;
   }
 
   @keyframes d-in-left {
     from {
       opacity: 0;
-      transform: translateX(-14px);
+      transform: translateX(-0.875rem);
     }
   }
 
@@ -2886,19 +2889,27 @@
   }
 
   :global(.page-map.full .maplibregl-ctrl-group) {
-    border-radius: 14px;
+    border-radius: 0.875rem;
     box-shadow: var(--shadow);
   }
 
   :global(.page-map.full .maplibregl-ctrl-group button) {
-    width: 38px;
-    height: 38px;
+    width: 2.375rem;
+    height: 2.375rem;
   }
 
   @container mapwin (min-width: 900px) {
     .side {
       top: 1rem;
       max-height: calc(100% - 12.6rem);
+    }
+  }
+
+  /* Breit genug, damit die Zeitleiste die Ecke frei lässt: Quellenangabe ganz unten rechts */
+  @container mapwin (min-width: 1800px) {
+    :global(.page-map.full .maplibregl-ctrl-bottom-right) {
+      bottom: 0.4rem;
+      right: 0.4rem;
     }
   }
 
@@ -2917,7 +2928,7 @@
 
     .full .dock {
       bottom: 0.8rem;
-      border-radius: 20px;
+      border-radius: 1.25rem;
     }
 
     .full .detail {
@@ -2948,7 +2959,7 @@
     white-space: nowrap;
     font-family: var(--sans);
     font-weight: 700;
-    border-radius: 8px;
+    border-radius: 0.5rem;
     box-shadow: var(--shadow);
     will-change: transform, opacity;
     animation: pop var(--dur, 1.5s) var(--ease) both;
@@ -2973,7 +2984,7 @@
   @keyframes pop {
     0% {
       opacity: 0;
-      transform: translateY(8px) scale(0.92);
+      transform: translateY(0.5rem) scale(0.92);
     }
     12% {
       opacity: 1;
@@ -2981,11 +2992,11 @@
     }
     60% {
       opacity: 1;
-      transform: translateY(-4px) scale(1);
+      transform: translateY(-0.25rem) scale(1);
     }
     100% {
       opacity: 0;
-      transform: translateY(-34px) scale(1);
+      transform: translateY(-2.125rem) scale(1);
     }
   }
 
@@ -3003,7 +3014,7 @@
     background: #ffffff;
     font-size: 0.74rem;
     color: var(--muted);
-    border-radius: 8px;
+    border-radius: 0.5rem;
   }
 
   :global(.page-map .maplibregl-ctrl-attrib a) {

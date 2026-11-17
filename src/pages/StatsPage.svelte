@@ -245,7 +245,7 @@
     display: block;
     width: 100%;
     height: calc(var(--h) * 100%);
-    min-height: 3px;
+    min-height: 0.1875rem;
     border-radius: var(--r);
     background: var(--red);
     opacity: calc(0.3 + var(--h) * 0.7);
@@ -292,7 +292,7 @@
   }
 
   .bars .bar {
-    height: 8px;
+    height: 0.5rem;
     border-radius: var(--r);
     background: var(--panel-2);
     overflow: hidden;
@@ -323,7 +323,7 @@
   .stack i {
     display: block;
     height: 100%;
-    min-width: 6px;
+    min-width: 0.375rem;
   }
 
   .legend {
@@ -341,8 +341,8 @@
   }
 
   .legend i {
-    width: 10px;
-    height: 10px;
+    width: 0.625rem;
+    height: 0.625rem;
     border-radius: var(--r);
   }
 

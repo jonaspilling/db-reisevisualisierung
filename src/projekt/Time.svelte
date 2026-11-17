@@ -65,12 +65,12 @@
   .hours {
     display: grid;
     grid-template-columns: repeat(24, 1fr);
-    gap: clamp(3px, 0.5vw, 7px);
+    gap: clamp(0.1875rem, 0.5vw, 0.4375rem);
   }
 
   .hours i {
     aspect-ratio: 1;
-    border-radius: 4px;
+    border-radius: 0.25rem;
     background: var(--s-soft);
   }
 

@@ -131,7 +131,7 @@
   }
 
   .bar {
-    height: 10px;
+    height: 0.625rem;
     border-radius: var(--r);
     background: linear-gradient(
       90deg,
@@ -172,7 +172,7 @@
 
   .track {
     position: relative;
-    height: 4px;
+    height: 0.25rem;
     margin: 1rem 0.5rem;
     border-radius: var(--r);
     background: var(--panel-2);
@@ -190,13 +190,13 @@
     position: absolute;
     left: 62%;
     top: 50%;
-    width: 24px;
-    height: 24px;
+    width: 1.5rem;
+    height: 1.5rem;
     transform: translate(-50%, -50%);
     border-radius: 50%;
     background: #fff;
-    border: 4px solid var(--red);
-    box-shadow: 0 2px 8px rgba(40, 45, 55, 0.35);
+    border: 0.25rem solid var(--red);
+    box-shadow: 0 2px 0.5rem rgba(40, 45, 55, 0.35);
   }
 
   .info {

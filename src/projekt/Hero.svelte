@@ -134,7 +134,7 @@
   @keyframes fade-up {
     from {
       opacity: 0;
-      transform: translateY(14px);
+      transform: translateY(0.875rem);
     }
   }
 
@@ -171,7 +171,7 @@
       transform: translateY(-1px);
     }
     50% {
-      transform: translateY(3px);
+      transform: translateY(0.1875rem);
     }
   }
 
@@ -182,7 +182,7 @@
     top: 0;
     right: 0;
     bottom: 0;
-    width: min(54%, 880px);
+    width: min(54%, 55rem);
     background: #1a1e26;
     border-radius: var(--r-lg) 0 0 var(--r-lg);
     overflow: hidden;

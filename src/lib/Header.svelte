@@ -52,7 +52,7 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding-top: 12px;
+    padding-top: 0.75rem;
     pointer-events: none;
   }
 
@@ -61,20 +61,20 @@
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    height: 48px;
-    padding: 5px 5px 5px 8px;
-    border-radius: 999px;
+    height: 3rem;
+    padding: 0.3125rem 0.3125rem 0.3125rem 0.5rem;
+    border-radius: 62.4375rem;
     background: #fff;
     box-shadow:
       0 0 0 1px rgba(40, 45, 55, 0.08),
-      0 8px 24px -10px rgba(40, 45, 55, 0.35);
+      0 0.5rem 1.5rem -0.625rem rgba(40, 45, 55, 0.35);
     animation: drop 700ms var(--ease) both;
   }
 
   @keyframes drop {
     from {
       opacity: 0;
-      transform: translateY(-18px) scale(0.96);
+      transform: translateY(-1.125rem) scale(0.96);
     }
   }
 
@@ -84,7 +84,7 @@
     gap: 0.55rem;
     padding-right: 0.35rem;
     text-decoration: none;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     transition: transform 160ms var(--ease);
   }
 
@@ -93,8 +93,8 @@
   }
 
   .logo {
-    width: 34px;
-    height: 34px;
+    width: 2.125rem;
+    height: 2.125rem;
     border-radius: 50%;
     background: var(--red);
     color: var(--on-red);
@@ -121,7 +121,7 @@
 
   .rule {
     width: 1px;
-    height: 22px;
+    height: 1.375rem;
     background: var(--line);
   }
 
@@ -130,17 +130,17 @@
     position: relative;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    height: 38px;
-    border-radius: 999px;
+    height: 2.375rem;
+    border-radius: 62.4375rem;
     background: var(--panel-2);
     isolation: isolate;
   }
 
   .thumb {
     position: absolute;
-    inset: 3px auto 3px 3px;
-    width: calc(50% - 3px);
-    border-radius: 999px;
+    inset: 0.1875rem auto 0.1875rem 0.1875rem;
+    width: calc(50% - 0.1875rem);
+    border-radius: 62.4375rem;
     background: var(--red);
     transform: translateX(calc(var(--i, 0) * 100%));
     transition: transform 460ms cubic-bezier(0.34, 1.32, 0.5, 1);
@@ -152,7 +152,7 @@
     place-items: center;
     padding-inline: 1.15rem;
     min-width: 5.2rem;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     text-decoration: none;
     font-weight: 700;
     font-size: 0.98rem;

@@ -76,7 +76,7 @@
   }
 
   a {
-    text-underline-offset: 3px;
+    text-underline-offset: 0.1875rem;
     text-decoration-color: var(--line);
     transition: color 160ms var(--ease), text-decoration-color 160ms var(--ease);
   }
