@@ -810,6 +810,8 @@
         ? { top: 90, left: 90, right: 90, bottom: 230 }
         : { top: 130, left: 20, right: 20, bottom: 270 };
     }
+    // Handy ohne Bedienfelder: die ganze Fläche für die Strecken
+    if (bare) return { top: 28, left: 12, right: 12, bottom: 28 };
     return stageW > 640
       ? { top: 24, left: 60, right: 60, bottom: 128 }
       : { top: 70, left: 20, right: 20, bottom: 215 };
@@ -1513,7 +1515,7 @@
             fullyIn = entry.intersectionRatio >= 0.7;
             if (fullyIn) maybeAutoplay();
           },
-          { threshold: [0, 0.7, 1] }
+          { threshold: [0, 0.7, 1], rootMargin: "0px 0px -25% 0px" }
         )
       : null;
     ioFull?.observe(mapEl);

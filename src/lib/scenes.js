@@ -81,16 +81,14 @@ function playOnceWhenVisible(node, cb) {
   const ms = 2400 + dwell * 1600;
   let raf = 0;
   let started = false;
+  // Start, wenn die Szene in die obere Hälfte des Bildschirms gewandert ist (und nicht schon beim ersten Auftauchen
+  // am unteren Rand): dann hat man sie vor Augen, bevor die Animation losläuft.
   const io = new IntersectionObserver(
-    (list) => {
-      const e = list[list.length - 1];
+    ([e]) => {
       if (started || !e.isIntersecting) return;
-      // "Ganz im Bild": der sichtbare Teil füllt den Bildschirm oder (bei kurzen Szenen) fast die ganze Szene
-      const need = Math.min(e.boundingClientRect.height * 0.9, window.innerHeight * 0.8);
-      if (e.intersectionRect.height < need) return;
       started = true;
       io.disconnect();
-      const t0 = performance.now();
+      const t0 = performance.now() + 450;
       const step = (now) => {
         const k = clamp((now - t0) / ms);
         set(k);
@@ -98,7 +96,7 @@ function playOnceWhenVisible(node, cb) {
       };
       raf = requestAnimationFrame(step);
     },
-    { threshold: Array.from({ length: 21 }, (_, i) => i / 20) }
+    { rootMargin: "0px 0px -55% 0px" }
   );
   io.observe(node);
   return {

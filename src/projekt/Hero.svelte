@@ -28,11 +28,57 @@
   let svgEl;
   let ready = $state(false);
 
-  // Die echte Länge jeder Strecke messen und als Pixelwert setzen. Die Strichmuster rechnen damit selbst und nicht
-  // über pathLength: manche Handy-Browser setzen das falsch um, dann erscheinen überall kleine rote Stücke.
+  // Die Züge werden von Hand bewegt: pro Bild wird ein kurzes Stück der Strecke als eigener Linienzug gesetzt.
+  // Strichmuster (stroke-dasharray) animiert zu lassen, zerfällt auf manchen Handys in einzelne Splitter.
   onMount(() => {
-    for (const p of svgEl.querySelectorAll("path")) p.style.setProperty("--len", p.getTotalLength().toFixed(2));
+    const paths = [...svgEl.querySelectorAll(".base")];
+    const trains = [...svgEl.querySelectorAll(".train")];
+    const lens = paths.map((p) => p.getTotalLength());
+    paths.forEach((p, i) => p.style.setProperty("--len", lens[i].toFixed(2)));
     ready = true;
+    if (prefersReducedMotion()) return;
+
+    const T0 = performance.now();
+    const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * x);
+    const SAMPLES = 7;
+    const SIZE = 0.04;
+    let raf = 0;
+    let on = true;
+    const frame = (now) => {
+      raf = 0;
+      if (!on) return;
+      trains.forEach((el, i) => {
+        const delay = 3000 + i * 140;
+        const dur = 5000 + i * 450;
+        const t = now - T0 - delay;
+        if (t < 0) return;
+        const s = ease((t % dur) / dur) * (1 + SIZE);
+        const a = Math.max(0, s - SIZE);
+        const b = Math.min(1, s);
+        if (b - a < 0.002) {
+          el.setAttribute("d", "");
+          return;
+        }
+        let d = "";
+        for (let k = 0; k <= SAMPLES; k++) {
+          const pt = paths[i].getPointAtLength((a + ((b - a) * k) / SAMPLES) * lens[i]);
+          d += (k ? "L" : "M") + pt.x.toFixed(1) + " " + pt.y.toFixed(1);
+        }
+        el.setAttribute("d", d);
+      });
+      raf = requestAnimationFrame(frame);
+    };
+    // Nur laufen lassen, solange die Zeichnung im Bild ist
+    const io = new IntersectionObserver(([e]) => {
+      on = e.isIntersecting;
+      if (on && !raf) raf = requestAnimationFrame(frame);
+    });
+    io.observe(svgEl);
+    return () => {
+      on = false;
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    };
   });
 
   // Beim Laden einmal hochrollen: kurz warten, dann bremst der Zähler weich ab
@@ -85,7 +131,7 @@
           <path {d} class="base" style="--i:{i}" />
         {/each}
         {#each net.paths as d, i}
-          <path {d} class="train" style="--i:{i}" />
+          <path class="train" d="" />
         {/each}
         {#each places as pl}
           <g transform="translate({pl.x} {pl.y})" class="place">
@@ -261,36 +307,10 @@
   }
 
   /* ... danach fährt auf jeder ein kurzer roter Zug von Anfang bis Ende, immer wieder */
-  svg:not(.ready) .train {
-    visibility: hidden;
-  }
-
+  /* ... danach fährt auf jeder ein kurzer roter Zug von Anfang bis Ende, immer wieder (Bewegung in Script) */
   .train {
     stroke: var(--red);
     stroke-width: 3.4;
-    stroke-dasharray: calc(var(--len, 1) * 0.04px) calc(var(--len, 1) * 2px);
-    stroke-dashoffset: calc(var(--len, 1) * 0.04px);
-    opacity: 0;
-    animation:
-      appear 1ms linear forwards,
-      travel 7s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-    animation-delay: calc(3000ms + var(--i) * 140ms), calc(3000ms + var(--i) * 140ms);
-    animation-duration: 1ms, calc(5s + (var(--i) * 0.45s));
-  }
-
-  @keyframes appear {
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes travel {
-    from {
-      stroke-dashoffset: calc(var(--len, 1) * 0.04px);
-    }
-    to {
-      stroke-dashoffset: calc(var(--len, 1) * -1px);
-    }
   }
 
   .place circle {
@@ -341,8 +361,5 @@
       animation: none;
     }
 
-    .train {
-      opacity: 0;
-    }
   }
 </style>
