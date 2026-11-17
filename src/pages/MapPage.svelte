@@ -70,13 +70,14 @@
   let visible = true;
   let autoPending = false;
   let autoTimer = 0;
+  let fullyIn = false; // Handy: die Karte ist (fast) ganz im Bild
   // Einmaliger Start der Wiedergabe, sobald die Karte sichtbar ist
   function maybeAutoplay() {
-    if (!autoPending || !visible) return;
+    if (!autoPending || !visible || (bare && !fullyIn)) return;
     autoPending = false;
     clearTimeout(autoTimer);
     autoTimer = setTimeout(() => {
-      if (u === 0 && !dragging && visible) playing = true;
+      if (u === 0 && !dragging && visible && (!bare || fullyIn)) playing = true;
       else if (u === 0 && !dragging) autoPending = true;
     }, 700);
   }
@@ -1362,7 +1363,7 @@
       // Beim Laden einmal alles durchlaufen lassen (außer bei reduzierter Bewegung)
       // Die Wiedergabe startet erst, wenn die Karte wirklich im Bild ist (die Karte im Projekt wird schon vorher
       // aufgebaut, während man noch weiter oben ist)
-      if (!bare && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         autoPending = true;
         maybeAutoplay();
       } else {
@@ -1505,6 +1506,17 @@
       { threshold: 0.05 }
     );
     io.observe(mapEl);
+    // Handy (nur die Karte, ohne Bedienfelder): die Wiedergabe startet erst, wenn die Karte fast ganz zu sehen ist
+    const ioFull = bare
+      ? new IntersectionObserver(
+          ([entry]) => {
+            fullyIn = entry.intersectionRatio >= 0.7;
+            if (fullyIn) maybeAutoplay();
+          },
+          { threshold: [0, 0.7, 1] }
+        )
+      : null;
+    ioFull?.observe(mapEl);
     // Fenstergröße geändert: festen Ausschnitt neu einpassen
     let resizeTimer;
     const ro = new ResizeObserver(() => {
@@ -1522,6 +1534,7 @@
       clearTimeout(resizeTimer);
       document.removeEventListener("visibilitychange", onVis);
       io.disconnect();
+      ioFull?.disconnect();
       ro.disconnect();
       map.remove();
     };
@@ -3196,6 +3209,11 @@
 
   :global(.page-map.bare .maplibregl-ctrl-bottom-right) {
     bottom: 0.3rem;
+  }
+
+  :global(.page-map.bare .maplibregl-ctrl-attrib) {
+    font-size: 0.58rem;
+    line-height: 1.2;
   }
 
   /* Touchgeräte zoomen mit zwei Fingern: die Plus/Minus-Knöpfe nehmen nur Platz weg, der Kompass bleibt */

@@ -5,11 +5,14 @@
   import Header from "./lib/Header.svelte";
   import Footer from "./lib/Footer.svelte";
   import JumpDown from "./lib/JumpDown.svelte";
+  import { isPhone } from "./lib/scenes.js";
   import StatsPage from "./pages/StatsPage.svelte";
   import AboutPage from "./pages/AboutPage.svelte";
   import HomePage from "./pages/HomePage.svelte";
   import MapPage from "./pages/MapPage.svelte";
 
+  // Handy: der schwebende Sprungknopf überdeckt Text, dort gibt es stattdessen den Link im Hero
+  const phoneUi = isPhone();
   let data = $state.raw(null);
   let error = $state("");
 
@@ -89,7 +92,7 @@
     {/key}
   {/if}
   {#if router.path !== "/karte"}<Footer />{/if}
-  {#if isHome}<JumpDown />{/if}
+  {#if isHome && !phoneUi}<JumpDown />{/if}
 {/if}
 
 <style>

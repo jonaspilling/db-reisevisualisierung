@@ -66,16 +66,60 @@ function unbind() {
   window.removeEventListener("resize", schedule);
 }
 
+// Handy: keine Scroll-Steuerung, aber jede Szene läuft einmal durch, sobald sie ganz im Bild ist.
+// Die Zeit ersetzt das Scrollen: --p wandert in ein paar Sekunden von 0 auf 1, dieselbe Animation wie am PC.
+function playOnceWhenVisible(node, cb) {
+  const set = (p) => {
+    const s = node.style;
+    s.setProperty("--p", p.toFixed(4));
+    s.setProperty("--in", "1");
+    s.setProperty("--out", "0");
+    cb?.(p, 1, 0);
+  };
+  set(0);
+  const dwell = parseFloat(getComputedStyle(node).getPropertyValue("--dwell")) || 1;
+  const ms = 2400 + dwell * 1600;
+  let raf = 0;
+  let started = false;
+  const io = new IntersectionObserver(
+    (list) => {
+      const e = list[list.length - 1];
+      if (started || !e.isIntersecting) return;
+      // "Ganz im Bild": der sichtbare Teil füllt den Bildschirm oder (bei kurzen Szenen) fast die ganze Szene
+      const need = Math.min(e.boundingClientRect.height * 0.9, window.innerHeight * 0.8);
+      if (e.intersectionRect.height < need) return;
+      started = true;
+      io.disconnect();
+      const t0 = performance.now();
+      const step = (now) => {
+        const k = clamp((now - t0) / ms);
+        set(k);
+        if (k < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    },
+    { threshold: Array.from({ length: 21 }, (_, i) => i / 20) }
+  );
+  io.observe(node);
+  return {
+    destroy() {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    },
+  };
+}
+
 // Svelte-Action:  <section class="scene" use:scene={(p, inn, out) => ...}>
 export function scene(node, cb) {
-  if (isStill()) {
-    // Ohne Scroll-Animation: jede Szene steht fertig da (Layout regelt .still am Container).
+  if (prefersReducedMotion()) {
+    // Reduzierte Bewegung: jede Szene steht fertig da
     node.style.setProperty("--p", "1");
     node.style.setProperty("--in", "1");
     node.style.setProperty("--out", "0");
     cb?.(1, 1, 0);
     return {};
   }
+  if (isPhone()) return playOnceWhenVisible(node, cb);
   const entry = { node, cb, p: -1, inn: -1, out: -1 };
   entries.add(entry);
   bind();

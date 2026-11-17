@@ -8,8 +8,8 @@
     const out = [];
     for (let k = digits - 1; k >= 0; k--) {
       const base = Math.floor(v / 10 ** k) % 10;
-      const lower = k > 0 ? (v / 10 ** (k - 1)) % 10 : 0;
-      const pos = k === 0 ? v % 10 : base + Math.max(0, lower - 9);
+      // Höhere Räder rollen erst im letzten Kilometer vor dem Übertrag weiter (wenn alle Stellen darunter auf 9 stehen)
+      const pos = k === 0 ? v % 10 : base + Math.max(0, (v % 10 ** k) - (10 ** k - 1));
       out.push({ k, pos });
       // Tausenderpunkt vor jeder dritten Stelle
       if (k > 0 && k % 3 === 0) out.push({ sep: true, k: `s${k}` });

@@ -25,6 +25,15 @@
 
   const target = $derived(Math.round(story.km));
   let km = $state(0);
+  let svgEl;
+  let ready = $state(false);
+
+  // Die echte Länge jeder Strecke messen und als Pixelwert setzen. Die Strichmuster rechnen damit selbst und nicht
+  // über pathLength: manche Handy-Browser setzen das falsch um, dann erscheinen überall kleine rote Stücke.
+  onMount(() => {
+    for (const p of svgEl.querySelectorAll("path")) p.style.setProperty("--len", p.getTotalLength().toFixed(2));
+    ready = true;
+  });
 
   // Beim Laden einmal hochrollen: kurz warten, dann bremst der Zähler weich ab
   onMount(() => {
@@ -71,12 +80,12 @@
 
     <!-- Der Hintergrund: die Routen werden gezeichnet, danach fahren kleine Züge darauf -->
     <div class="backdrop" aria-hidden="true">
-      <svg viewBox={net.viewBox} preserveAspectRatio="xMidYMid meet">
+      <svg bind:this={svgEl} class:ready viewBox={net.viewBox} preserveAspectRatio="xMidYMid meet">
         {#each net.paths as d, i}
-          <path {d} class="base" pathLength="100" style="--i:{i}" />
+          <path {d} class="base" style="--i:{i}" />
         {/each}
         {#each net.paths as d, i}
-          <path {d} class="train" pathLength="100" style="--i:{i}" />
+          <path {d} class="train" style="--i:{i}" />
         {/each}
         {#each places as pl}
           <g transform="translate({pl.x} {pl.y})" class="place">
@@ -237,14 +246,14 @@
   .base {
     stroke: #3a4352;
     stroke-width: 2;
-    stroke-dasharray: 100;
+    stroke-dasharray: calc(var(--len, 1) * 1px);
     animation: draw 2600ms var(--ease) both;
     animation-delay: calc(500ms + var(--i) * 140ms);
   }
 
   @keyframes draw {
     from {
-      stroke-dashoffset: 100;
+      stroke-dashoffset: calc(var(--len, 1) * 1px);
     }
     to {
       stroke-dashoffset: 0;
@@ -252,11 +261,15 @@
   }
 
   /* ... danach fährt auf jeder ein kurzer roter Zug von Anfang bis Ende, immer wieder */
+  svg:not(.ready) .train {
+    visibility: hidden;
+  }
+
   .train {
     stroke: var(--red);
     stroke-width: 3.4;
-    stroke-dasharray: 4 200;
-    stroke-dashoffset: 4;
+    stroke-dasharray: calc(var(--len, 1) * 0.04px) calc(var(--len, 1) * 2px);
+    stroke-dashoffset: calc(var(--len, 1) * 0.04px);
     opacity: 0;
     animation:
       appear 1ms linear forwards,
@@ -273,10 +286,10 @@
 
   @keyframes travel {
     from {
-      stroke-dashoffset: 4;
+      stroke-dashoffset: calc(var(--len, 1) * 0.04px);
     }
     to {
-      stroke-dashoffset: -100;
+      stroke-dashoffset: calc(var(--len, 1) * -1px);
     }
   }
 
