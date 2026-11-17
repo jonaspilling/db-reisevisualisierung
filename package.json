@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:portable": "vite build --outDir dist-portable --emptyOutDir && node scripts/make_portable.mjs",
     "build:routes": "python scripts/build_routes.py",
     "preview": "vite preview"
   },

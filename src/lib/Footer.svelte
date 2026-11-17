@@ -1,9 +1,19 @@
-<footer class="footer">
+<footer class="footer" id="info">
   <div class="container">
     <div class="cols">
       <div class="about">
         <p class="brand">Trasse<b>26</b></p>
-        <p>Eine Visualisierung meiner Bahnreisen. Uni-Projekt im Fach Information Design, 3. Semester.</p>
+        <p>
+          Eine Visualisierung meiner Bahnreisen 2026: 16 Fernverkehrsfahrten, nachgezeichnet auf dem echten Gleisnetz
+          und als scrollbare Geschichte erzählt. Uni-Projekt im Fach Information Design, 3. Semester.
+        </p>
+      </div>
+      <div>
+        <h4>Kontakt</h4>
+        <ul>
+          <li><a href="https://github.com/jonaspilling/db-reisevisualisierung" target="_blank" rel="noopener">Code und Projekt auf GitHub</a></li>
+          <li><a href="https://github.com/jonaspilling/db-reisevisualisierung/issues" target="_blank" rel="noopener">Fragen und Hinweise als Issue</a></li>
+        </ul>
       </div>
       <div>
         <h4>Seiten</h4>
@@ -42,7 +52,7 @@
 
   .cols {
     display: grid;
-    grid-template-columns: 1.4fr 1fr 1.4fr;
+    grid-template-columns: 1.7fr 1.1fr 0.9fr 1.4fr;
     gap: 2.5rem;
   }
 

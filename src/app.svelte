@@ -1,9 +1,10 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { loadData } from "./lib/data.js";
   import { router, initRouter, isHomePath } from "./lib/router.svelte.js";
   import Header from "./lib/Header.svelte";
   import Footer from "./lib/Footer.svelte";
+  import JumpDown from "./lib/JumpDown.svelte";
   import StatsPage from "./pages/StatsPage.svelte";
   import AboutPage from "./pages/AboutPage.svelte";
   import HomePage from "./pages/HomePage.svelte";
@@ -15,6 +16,34 @@
   // Karte und Projekt sind eine einzige Seite (Home); der Schlüssel verhindert, dass sie dazwischen neu aufgebaut wird
   const isHome = $derived(isHomePath(router.path));
   const pageKey = $derived(isHome ? "home" : router.path);
+
+  // Startseite und Kartenseite sind schwer (Szenen, WebGL-Karte). Nach dem ersten Besuch bleiben sie aufgebaut und
+  // werden nur ausgeblendet: der Wechsel ist sofort da, nichts baut sich neu auf, die Scroll-Position bleibt erhalten.
+  const visited = $state({ home: false, "/karte": false });
+  $effect(() => {
+    if (pageKey in visited) visited[pageKey] = true;
+  });
+
+  // Scroll-Position der Startseite merken und beim Zurückkommen wiederherstellen
+  let homeY = 0;
+  onMount(() => {
+    const onScroll = () => {
+      if (pageKey === "home") homeY = window.scrollY;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  });
+  let lastKey = null;
+  $effect(() => {
+    const key = pageKey;
+    const prev = lastKey;
+    lastKey = key;
+    if (prev === null || prev === key) return;
+    tick().then(() => {
+      if (key === "home") window.scrollTo({ top: homeY, behavior: "instant" });
+      else if (key === "/karte") window.scrollTo({ top: 0, behavior: "instant" });
+    });
+  });
 
   onMount(() => {
     const stop = initRouter();
@@ -38,20 +67,29 @@
     <p class="muted">Fahrten werden geladen …</p>
   </div>
 {:else}
-  {#key pageKey}
-    <div class="page" class:home={isHome} class:full={router.path === "/karte"}>
-      {#if isHome}
-        <HomePage trips={data.trips} stations={data.stations} />
-      {:else if router.path === "/karte"}
-        <MapPage full trips={data.trips} stations={data.stations} />
-      {:else if router.path === "/statistik"}
-        <StatsPage trips={data.trips} stations={data.stations} />
-      {:else}
-        <AboutPage trips={data.trips} stations={data.stations} />
-      {/if}
+  {#if visited.home || pageKey === "home"}
+    <div class="page home" class:off={pageKey !== "home"}>
+      <HomePage trips={data.trips} stations={data.stations} />
     </div>
-  {/key}
+  {/if}
+  {#if visited["/karte"] || pageKey === "/karte"}
+    <div class="page full" class:off={pageKey !== "/karte"}>
+      <MapPage full trips={data.trips} stations={data.stations} />
+    </div>
+  {/if}
+  {#if pageKey === "/statistik" || pageKey === "/ueber"}
+    {#key pageKey}
+      <div class="page">
+        {#if pageKey === "/statistik"}
+          <StatsPage trips={data.trips} stations={data.stations} />
+        {:else}
+          <AboutPage trips={data.trips} stations={data.stations} />
+        {/if}
+      </div>
+    {/key}
+  {/if}
   {#if router.path !== "/karte"}<Footer />{/if}
+  {#if isHome}<JumpDown />{/if}
 {/if}
 
 <style>
@@ -105,8 +143,13 @@
     min-height: calc(100svh - var(--header-h));
   }
 
+  /* Ausgeblendete Seite bleibt im Speicher, nimmt aber keinen Platz und kostet nichts */
+  .page.off {
+    display: none;
+  }
+
   /* Eigene Seiten bleiben unter der schwebenden Menü-Pille; die Startseite läuft bis ganz nach oben */
-  .page:not(.home):not(.full) {
+  .page:not(.home):not(.full):not(.off) {
     padding-top: var(--bar-h);
   }
 

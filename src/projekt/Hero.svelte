@@ -5,6 +5,7 @@
   import { onMount } from "svelte";
   import { scene, prefersReducedMotion } from "../lib/scenes.js";
   import { goSection } from "../lib/router.svelte.js";
+  import { jumpToInfo } from "../lib/jump.js";
   import { projectTrips } from "../lib/project.js";
   import { shortName } from "../lib/facts.js";
   import { endpointNames } from "../lib/story.js";
@@ -65,6 +66,7 @@
         Weiter
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14m0 0-6-6m6 6 6-6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none" /></svg>
       </button>
+      <button class="skip" type="button" onclick={jumpToInfo}>Direkt zu Projekt &amp; Kontakt</button>
     </div>
 
     <!-- Der Hintergrund: die Routen werden gezeichnet, danach fahren kleine Züge darauf -->
@@ -151,6 +153,25 @@
     border-radius: var(--r);
     animation: fade-up 900ms var(--ease) 1300ms both;
     transition: background-color 140ms var(--ease);
+  }
+
+  .skip {
+    display: block;
+    width: fit-content;
+    margin: 1.1rem 0 0 0.1rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--muted);
+    text-decoration: underline;
+    text-decoration-color: var(--line);
+    text-underline-offset: 0.25rem;
+    animation: fade-up 900ms var(--ease) 1500ms both;
+    transition: color 140ms var(--ease), text-decoration-color 140ms var(--ease);
+  }
+
+  .skip:hover {
+    color: var(--red);
+    text-decoration-color: var(--red);
   }
 
   .cue:hover {
@@ -285,6 +306,10 @@
 
     .cue {
       display: none;
+    }
+
+    .skip {
+      margin-left: 0;
     }
 
     /* Auf dem Handy liegt der Hintergrund unter der Überschrift */

@@ -81,7 +81,7 @@
   });
 </script>
 
-<section class="scene t-dark" style="--dwell:2.6" use:scene={(v) => (p = v)}>
+<section class="scene t-dark" style="--dwell:2" use:scene={(v) => (p = v)}>
   <div class="sc-stage">
     <!-- A: längste Fahrt -->
     <div class="copy" style="opacity:{1 - kA}">

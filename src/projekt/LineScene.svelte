@@ -65,7 +65,7 @@
   });
 </script>
 
-<section class="scene t-light" style="--dwell:4" use:scene={(v) => (p = v)}>
+<section class="scene t-light" style="--dwell:2.2" use:scene={(v) => (p = v)}>
   <div class="sc-stage">
     <div class="copy">
       <h2 class="say">

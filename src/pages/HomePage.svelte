@@ -4,7 +4,8 @@
   import "../projekt/projekt.css";
   import { buildStory } from "../lib/story.js";
   import { prefersReducedMotion } from "../lib/scenes.js";
-  import { router, view, replaceHash } from "../lib/router.svelte.js";
+  import { flyTo } from "../lib/jump.js";
+  import { router, view, replaceHash, isHomePath } from "../lib/router.svelte.js";
   import Hero from "../projekt/Hero.svelte";
   import KartenScene from "../projekt/KartenScene.svelte";
   import LineScene from "../projekt/LineScene.svelte";
@@ -35,8 +36,9 @@
   }
 
   function scrollToSection(section, smooth) {
-    const y = section === "facts" ? sceneY(2) : section === "map" ? sceneY(1) : 0;
-    window.scrollTo({ top: y, behavior: smooth ? "smooth" : "instant" });
+    const at = () => (section === "facts" ? sceneY(2) : section === "map" ? sceneY(1) : 0);
+    if (smooth) flyTo(at);
+    else window.scrollTo({ top: at(), behavior: "instant" });
   }
 
   onMount(() => {
@@ -49,6 +51,7 @@
     let raf = 0;
     const spy = () => {
       raf = 0;
+      if (!isHomePath(router.path)) return; // ausgeblendet (Kartenseite): Adresse und Schalter nicht anfassen
       const y = window.scrollY;
       const y1 = sceneY(1);
       const y2 = sceneY(2);
@@ -78,13 +81,14 @@
   });
 
   // Wechsel von Hand in der Adresszeile (#/ und #/projekt)
-  let first = true;
+  let prevPath = router.path;
   $effect(() => {
     const path = router.path;
-    if (first) {
-      first = false;
-      return;
-    }
+    const before = prevPath;
+    prevPath = path;
+    // Nur bei einem Wechsel innerhalb der Startseite scrollen; beim Zurückkommen von der Karte
+    // stellt App.svelte die alte Position wieder her
+    if (!isHomePath(path) || !isHomePath(before) || path === before) return;
     scrollToSection(path === "/projekt" ? "facts" : "top", !still);
   });
 </script>

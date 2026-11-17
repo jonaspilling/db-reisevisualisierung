@@ -7,6 +7,8 @@ __pycache__/
 # Node / Web
 node_modules/
 dist/
+dist-portable/
+portable/
 
 # Secrets & Konfiguration
 .env

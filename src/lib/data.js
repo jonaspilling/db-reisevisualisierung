@@ -1,3 +1,5 @@
+import { embedded } from "./assets.js";
+
 export const DAY = 86_400_000;
 
 function parseTime(datum, zeit) {
@@ -33,16 +35,21 @@ export function trainTypes(zuege) {
 }
 
 export async function loadData() {
-  const base = import.meta.env.BASE_URL;
-  const [routesRes, stationsRes] = await Promise.all([
-    fetch(`${base}data/routes.geojson`),
-    fetch(`${base}data/stations.json`),
-  ]);
-  if (!routesRes.ok || !stationsRes.ok) {
-    throw new Error("Die Daten konnten nicht geladen werden.");
+  let routes = embedded("routes.geojson");
+  let stations = embedded("stations.json");
+  if (!routes || !stations) {
+    const base = import.meta.env.BASE_URL;
+    const [routesRes, stationsRes] = await Promise.all([
+      // no-cache: der Browser fragt nach, ob die Dateien neu sind (nach einer neuen Berechnung der Routen)
+      fetch(`${base}data/routes.geojson`, { cache: "no-cache" }),
+      fetch(`${base}data/stations.json`, { cache: "no-cache" }),
+    ]);
+    if (!routesRes.ok || !stationsRes.ok) {
+      throw new Error("Die Daten konnten nicht geladen werden.");
+    }
+    routes = await routesRes.json();
+    stations = await stationsRes.json();
   }
-  const routes = await routesRes.json();
-  const stations = await stationsRes.json();
 
   const trips = routes.features
     .map((f) => {

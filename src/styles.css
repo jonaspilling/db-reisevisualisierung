@@ -45,13 +45,17 @@ html {
   caret-color: var(--red);
   scrollbar-color: #c3c9d0 transparent;
   scrollbar-width: thin;
+  /* Platz für die Scrollleiste bleibt immer reserviert: sonst springt die zentrierte Menü-Pille, sobald eine Seite
+     (Karte) keine Leiste hat und die nächste (Projekt) eine bekommt */
+  scrollbar-gutter: stable;
 }
 
 /* Große Bildschirme (Full HD und darüber, 4K): 1 rem wächst mit der Breite, alles in rem skaliert mit.
    Bis 1920 px Breite bleibt es bei 16 px, darüber ist der Aufbau eine maßstabsgetreue Vergrößerung. */
 @media (min-width: 1921px) {
   html {
-    font-size: calc(100vw / 120);
+    /* Bezug ist 16:9: auf sehr breiten Fenstern (21:9) bestimmt die Höhe die Größe, sonst wäre alles zu hoch */
+    font-size: max(16px, calc(min(100vw, 177.78vh) / 120));
   }
 }
 
@@ -192,6 +196,17 @@ html.has-vt .page {
     opacity: 0;
     transform: translateY(0.5rem);
   }
+}
+
+/* Die Menü-Pille bleibt bei jedem Seitenwechsel stehen und blendet nicht mit aus */
+.header {
+  view-transition-name: header;
+}
+
+::view-transition-group(header),
+::view-transition-old(header),
+::view-transition-new(header) {
+  animation: none;
 }
 
 ::view-transition-old(root) {

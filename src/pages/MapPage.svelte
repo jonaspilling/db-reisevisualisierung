@@ -2,6 +2,7 @@
   import { onMount, untrack } from "svelte";
   import * as maplibregl from "maplibre-gl";
   import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
+  import { embedded } from "../lib/assets.js";
   import "maplibre-gl/dist/maplibre-gl.css";
   import { DAY } from "../lib/data.js";
   import { shortName } from "../lib/facts.js";
@@ -24,7 +25,7 @@
   const SPR_K = 150; // Feder: Steifigkeit
   const SPR_D = 11; // Feder: Dämpfung (unterkritisch: die Stäbe schießen hoch und federn kurz nach)
   // Große Bildschirme: Linien, Schrift und Punkte der Karte wachsen mit (die Seite skaliert über rem)
-  const SC = typeof window === "undefined" ? 1 : Math.min(2.6, Math.max(1, window.innerWidth / 1920));
+  const SC = typeof window === "undefined" ? 1 : Math.min(2.6, Math.max(1, Math.min(window.innerWidth / 1920, window.innerHeight / 1080)));
   const zw = (...st) => ["interpolate", ["linear"], ["zoom"], ...st.map((v, i) => (i % 2 === 1 ? v * SC : v))];
   const PITCH_3D = 38;
   const BEARING_3D = -10;
@@ -178,15 +179,17 @@
     flatMode
       ? onW(fw, extra)
       : [
+          // 3D: weit weg etwas schmaler (die Mauer trägt die Information), ab Zoom 9 die volle Breite.
+          // Der Regler "Linienbreite" wirkt in jedem Zoom.
           "interpolate",
           ["linear"],
           ["zoom"],
           4,
-          onW(["*", LINE_W, 0.7], extra),
+          onW(fw * 0.55, extra),
           7,
-          onW(LINE_W, extra),
+          onW(fw * 0.85, extra),
           8.2,
-          onW(LINE_W, extra),
+          onW(fw * 0.85, extra),
           9.2,
           onW(fw, extra),
         ];
@@ -909,7 +912,8 @@
       hoverEl.style.transform = `translate3d(${cx.toFixed(1)}px, ${cy.toFixed(1)}px, 0)`;
     }
 
-    if (!loaded) return;
+    // Außerhalb des Bildes ruht die Animation: kein Zeichnen, keine Federn, keine Wiedergabe
+    if (!loaded || !visible) return;
     stepAnim(dt);
 
     if (full && visible) {
@@ -1041,8 +1045,8 @@
     // Ab Zoom 9 übernimmt das genaue Netz der Grundkarte, damit es zu den Routen passt.
     if (full) {
       const dataUrl = (name) => new URL(`${import.meta.env.BASE_URL}data/${name}`, window.location.href).href;
-      style.sources.urban = { type: "geojson", data: dataUrl("urban.geojson") };
-      style.sources.rails = { type: "geojson", data: dataUrl("rails_eu.geojson") };
+      style.sources.urban = { type: "geojson", data: embedded("urban.geojson") ?? dataUrl("urban.geojson") };
+      style.sources.rails = { type: "geojson", data: embedded("rails_eu.geojson") ?? dataUrl("rails_eu.geojson") };
       style.sources.sat = {
         type: "raster",
         tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
@@ -1228,6 +1232,53 @@
     return style;
   }
 
+  // Rechte Maustaste (oder Strg + Ziehen): seitwärts dreht die Karte, hoch und runter neigt sie.
+  // Die Richtung wird nach den ersten Pixeln gewählt und bleibt für diese Bewegung gesperrt, damit nichts
+  // zugleich wackelt. Mit gedrückter Umschalttaste geht beides zusammen. In 2D wird nur gedreht.
+  function setupRotateDrag() {
+    const el = map.getCanvasContainer();
+    el.addEventListener("contextmenu", (e) => e.preventDefault());
+    let g = null;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      if (g && g.axis) map.jumpTo({ bearing: g.bearing, pitch: g.pitch });
+    };
+    el.addEventListener("pointerdown", (e) => {
+      if (!(e.button === 2 || (e.button === 0 && e.ctrlKey))) return;
+      e.preventDefault();
+      map.stop();
+      g = { id: e.pointerId, x: e.clientX, y: e.clientY, b0: map.getBearing(), p0: map.getPitch(), axis: null, bearing: map.getBearing(), pitch: map.getPitch() };
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      const dx = e.clientX - g.x;
+      const dy = e.clientY - g.y;
+      if (!g.axis) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 7) return;
+        g.axis = !is3D ? "x" : e.shiftKey ? "xy" : Math.abs(dx) > Math.abs(dy) * 1.15 ? "x" : "y";
+        // Von hier an zählt die Bewegung, damit die Karte beim Einrasten nicht springt
+        g.x = e.clientX;
+        g.y = e.clientY;
+        userMoved = true;
+        follow = false;
+        orbit = false;
+        return;
+      }
+      if (g.axis !== "y") g.bearing = g.b0 + (e.clientX - g.x) * 0.3;
+      if (g.axis !== "x") g.pitch = Math.max(0, Math.min(75, g.p0 - (e.clientY - g.y) * 0.3));
+      if (!raf) raf = requestAnimationFrame(apply);
+    });
+    const end = (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+      g = null;
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+  }
+
   function createMap(style) {
     try {
       map = new maplibregl.Map({
@@ -1244,7 +1295,7 @@
         // Im Fenster der Startseite ist die Ansicht festgelegt (Seite scrollt über der Karte).
         // Auf der Kartenseite lässt sich alles frei bewegen: verschieben, zoomen, drehen, neigen.
         dragPan: full,
-        dragRotate: full,
+        dragRotate: false, // Drehen und Neigen übernimmt unten eine eigene Steuerung (Achsensperre)
         scrollZoom: full,
         boxZoom: false,
         keyboard: full,
@@ -1262,6 +1313,7 @@
             follow = false;
           }
         });
+        setupRotateDrag();
       }
     } catch (e) {
       mapError = true;
@@ -1338,7 +1390,7 @@
       }, 110);
     }
 
-    map.on("mousemove", (e) => {
+    const handleMove = (e) => {
       if (!loaded) return;
       const pl = placeHit(e.point);
       const run = pl ? null : pickRun(e.point);
@@ -1368,6 +1420,20 @@
         hoverInfo = cellInfo(run);
       }
       hoverOn = true;
+    };
+    // Höchstens einmal pro Bild abfragen und gar nicht, solange eine Maustaste gedrückt ist (Ziehen, Drehen)
+    let moveEv = null;
+    let moveRaf = 0;
+    map.on("mousemove", (e) => {
+      if (e.originalEvent && e.originalEvent.buttons) return;
+      moveEv = e;
+      if (!moveRaf) {
+        moveRaf = requestAnimationFrame(() => {
+          moveRaf = 0;
+          if (moveEv) handleMove(moveEv);
+          moveEv = null;
+        });
+      }
     });
 
     map.getCanvas().addEventListener("mouseleave", scheduleClear);
@@ -1400,7 +1466,12 @@
     // Wiedergabe und Beschriftungen laufen nur, solange die Karte zu sehen ist
     let docVisible = true;
     let inView = true;
-    const syncVisible = () => (visible = docVisible && inView);
+    const syncVisible = () => {
+      const was = visible;
+      visible = docVisible && inView;
+      // Wieder im Bild: den Stand nachholen, der in der Zwischenzeit ausgesetzt wurde
+      if (visible && !was && map && loaded) applyU(u);
+    };
     const onVis = () => {
       docVisible = !document.hidden;
       syncVisible();
@@ -1438,7 +1509,7 @@
 
   onMount(() => {
     // Der Worker muss für den Bundler explizit benannt werden
-    maplibregl.setWorkerUrl(workerUrl);
+    maplibregl.setWorkerUrl(embedded("worker") ?? workerUrl);
     buildModel();
 
     let disposed = false;
@@ -1678,7 +1749,7 @@
         {#if !panelOpen}
           <button type="button" class="side-fab" onclick={() => (panelOpen = true)} aria-expanded="false">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
-            Optionen
+            <span class="lbl">Optionen</span>
             {#if selected.length}<b>{selected.length}</b>{/if}
           </button>
         {:else}
@@ -1752,7 +1823,7 @@
                 </label>
                 <button type="button" class="reset" onclick={resetView}>Ansicht zurücksetzen</button>
               </section>
-              <p class="hint hint-mouse">Ziehen verschiebt, das Mausrad zoomt. Mit Rechtsklick oder Strg+Ziehen drehst und neigst du die Karte.</p>
+              <p class="hint hint-mouse">Ziehen verschiebt, das Mausrad zoomt. Rechte Maustaste halten und seitwärts ziehen dreht die Karte, hoch und runter neigt sie (mit Umschalt beides zugleich).</p>
               <p class="hint hint-touch">Mit einem Finger verschieben, mit zwei Fingern zoomen, drehen und neigen.</p>
             {:else}
               <div class="trips-actions">
@@ -1964,11 +2035,6 @@
     box-shadow: 0 0 0 1px var(--line);
   }
 
-  .info h1 {
-    font-size: 1.35rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
 
   .legend {
     margin-top: 0;
@@ -2905,6 +2971,36 @@
     }
   }
 
+  /* Beim Wechsel auf die Kartenseite kommen die Fenster nacheinander herein: erst die Legende, dann Optionen und
+     Zoom, zuletzt die Zeitleiste. Die Seite bleibt im Speicher und wird nur eingeblendet; jedes Einblenden startet
+     diese Animationen neu. "translate" statt "transform", damit die zentrierte Zeitleiste ihre Verschiebung behält. */
+  .full .left {
+    animation: ui-in 560ms var(--ease) 140ms both;
+    --dx: -1.25rem;
+  }
+
+  .full .side {
+    animation: ui-in 560ms var(--ease) 230ms both;
+    --dx: 1.25rem;
+  }
+
+  .full .dock {
+    animation: ui-in 620ms var(--ease) 340ms both;
+    --dy: 1.75rem;
+  }
+
+  :global(.page-map.full .maplibregl-ctrl-top-right) {
+    animation: ui-in 520ms var(--ease) 300ms both;
+    --dx: -1.25rem;
+  }
+
+  @keyframes ui-in {
+    from {
+      opacity: 0;
+      translate: var(--dx, 0) var(--dy, 0);
+    }
+  }
+
   /* Breit genug, damit die Zeitleiste die Ecke frei lässt: Quellenangabe ganz unten rechts */
   @container mapwin (min-width: 1800px) {
     :global(.page-map.full .maplibregl-ctrl-bottom-right) {
@@ -2914,9 +3010,32 @@
   }
 
   @container mapwin (max-width: 560px) {
+    /* Handy: Legende nur als schmaler Farbverlauf, der Optionen-Knopf sitzt als runder Knopf neben der Menü-Pille */
     .full .left {
       top: 4.4rem;
-      width: calc(100% - 9rem);
+      width: 9.5rem;
+    }
+
+    .full .left .info {
+      padding: 0.5rem 0.65rem 0.55rem;
+    }
+
+    .full .left .lt,
+    .full .left .cols-note,
+    .full .left .swatch {
+      display: none;
+    }
+
+    .side:not(.open) {
+      top: 0.8rem;
+    }
+
+    .side-fab {
+      padding: 0.7rem;
+    }
+
+    .side-fab .lbl {
+      display: none;
     }
 
     .side {

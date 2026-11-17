@@ -220,7 +220,7 @@
   .cols {
     flex: 1;
     display: grid;
-    grid-template-columns: repeat(var(--n), 1fr);
+    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
     gap: clamp(0.3rem, 0.7vw, 0.8rem);
     margin-top: 1.2rem;
     min-height: 12rem;

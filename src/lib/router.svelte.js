@@ -1,6 +1,8 @@
 // Minimaler Hash-Router: funktioniert auf jedem Webspace ohne Server-Konfiguration
 // (z. B. GitHub Pages), Adressen sehen aus wie  #/fahrten  oder  #/?fahrt=5
 
+import { tick } from "svelte";
+
 export const router = $state({ path: "/", params: {} });
 
 // Die Startseite ("Projekt") ist eine einzige lange Seite: "/" ist der Anfang, "/projekt" springt zu den Fakten.
@@ -27,8 +29,6 @@ function parse() {
   router.params = Object.fromEntries(new URLSearchParams(query));
 }
 
-import { tick } from "svelte";
-
 const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export function initRouter() {
@@ -42,7 +42,8 @@ export function initRouter() {
     const apply = async () => {
       parse();
       await tick();
-      if (!stayHome) window.scrollTo({ top: 0, behavior: "instant" });
+      // Startseite und Karte bleiben aufgebaut und setzen ihre Scroll-Position selbst (siehe App.svelte)
+      if (!stayHome && !isHomePath(router.path) && router.path !== "/karte") window.scrollTo({ top: 0, behavior: "instant" });
     };
     if (stayHome) {
       apply();
