@@ -25,11 +25,11 @@
 </section>
 
 <style>
-  /* Die Sonderschrift ist sehr speziell: nur dieses eine Wort */
+  /* Sonderschrift joc: rund und sehr dick, nur dieses eine Wort */
   .special {
     font-family: var(--special);
-    font-weight: 700;
-    letter-spacing: 0.01em;
+    font-weight: 900;
+    letter-spacing: 0;
   }
 
   .outro {

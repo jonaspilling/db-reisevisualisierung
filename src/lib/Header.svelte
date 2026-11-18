@@ -233,10 +233,10 @@
   }
 
   .name {
-    font-family: var(--display);
-    font-size: 1.15rem;
+    font-family: var(--special);
+    font-size: 1.05rem;
     font-weight: 900;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
     text-transform: uppercase;
     line-height: 1;
   }

@@ -78,9 +78,10 @@
     display: flex;
     align-items: center;
     gap: 0.7rem;
-    font-size: clamp(2rem, 3.4vw, 2.8rem);
-    font-weight: 800;
-    letter-spacing: -0.03em;
+    font-family: var(--special);
+    font-size: clamp(1.7rem, 3vw, 2.4rem);
+    font-weight: 900;
+    letter-spacing: 0;
     line-height: 1;
     color: var(--text);
     margin-bottom: 0.9rem;

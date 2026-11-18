@@ -174,11 +174,11 @@
     font-size: clamp(2.4rem, 5.2vw, 5.6rem);
   }
 
-  /* Die Sonderschrift ist sehr speziell: nur dieses eine Wort */
+  /* Sonderschrift joc: rund und sehr dick, nur dieses eine Wort */
   .hero :global(.special) {
     font-family: var(--special);
-    font-weight: 700;
-    letter-spacing: 0.01em;
+    font-weight: 900;
+    letter-spacing: 0;
   }
 
   .num {
