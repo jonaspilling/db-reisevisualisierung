@@ -46,6 +46,7 @@
     <div class="train">
       <div class="consist">
         <div class="car">
+          <div class="hull">
           <div class="glass">
             {#if mapOn}
               <MapPage {trips} {stations} {bare} />
@@ -57,8 +58,21 @@
             <i class="stripe" aria-hidden="true"></i>
             <div class="plate"><b>Bordbistro</b><span>Fahrten 2026</span></div>
           </div>
+          </div>
+          <!-- Die Front: abfallende Nase wie beim ICE, dunkle Frontscheibe, Scheinwerfer, der rote Streifen läuft weiter -->
+          <div class="nose" aria-hidden="true">
+            <svg class="shape" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 0H38C70 0 92 24 97 58C99 74 100 88 100 100H0Z" /></svg>
+            <div class="front">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 0H30C54 0 72 12 80 30C82 36 83 42 83 48H0Z" /></svg>
+              <i class="lamp"></i><i class="lamp b"></i>
+            </div>
+            <div class="skirt"><i class="stripe"></i></div>
+          </div>
         </div>
-        <div class="bogies" aria-hidden="true"><i></i><i></i></div>
+        <div class="bogies" aria-hidden="true">
+          <div class="bogie"><i></i><i></i></div>
+          <div class="bogie"><i></i><i></i></div>
+        </div>
       </div>
       <div class="rail" aria-hidden="true"></div>
     </div>
@@ -132,14 +146,95 @@
     transform: translateX(calc((1 - var(--arrive)) * -112%));
   }
 
+  /* Der Wagen: Rumpf mit Fenster und dahinter die Front. Beide teilen sich dieselben zwei Zeilen
+     (Fensterreihe und Streifen), damit der rote Streifen vom Rumpf in die Nase durchläuft. */
   .car {
+    --nose: 6.5rem;
     display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--nose);
     grid-template-rows: minmax(0, 1fr) auto;
     height: 100%;
+  }
+
+  .hull {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    display: grid;
+    grid-template-rows: subgrid;
     padding: 0.75rem 0.75rem 0;
     background: var(--panel-2);
-    border-radius: 2.875rem 2.875rem 1rem 1rem;
+    border-radius: 2.875rem 0 0 1rem;
     box-shadow: 0 0 0 1px var(--line);
+  }
+
+  .nose {
+    position: relative;
+    grid-column: 2;
+    grid-row: 1 / 3;
+    display: grid;
+    grid-template-rows: subgrid;
+    margin-left: -3px;
+  }
+
+  .nose .shape {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .nose .shape path {
+    fill: var(--panel-2);
+    stroke: var(--line);
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .front {
+    position: relative;
+    padding: 0.75rem 0 0;
+  }
+
+  .front svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .front path {
+    fill: var(--text);
+  }
+
+  /* Zwei Scheinwerfer unten an der Front */
+  .lamp {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.65rem;
+    width: 0.95rem;
+    height: 0.34rem;
+    border-radius: 0.2rem;
+    background: #fff7c8;
+    box-shadow: 0 0 0.6rem 0.12rem rgba(255, 240, 160, 0.7);
+  }
+
+  .lamp.b {
+    right: auto;
+    left: 0.3rem;
+    width: 0.5rem;
+    background: var(--red);
+    box-shadow: none;
+  }
+
+  .skirt {
+    position: relative;
+    padding: 0.75rem 0 0;
+  }
+
+  .skirt .stripe {
+    display: block;
+    margin-right: 0.15rem;
+    border-radius: 0 0.3125rem 0.3125rem 0;
   }
 
   /* Das Fenster: dunkler Rahmen, runde Ecken, die Karte füllt es ganz aus */
@@ -189,23 +284,60 @@
     font-weight: 800;
   }
 
-  /* Zwei Drehgestelle: dunkle Räder mit rotem Ring, sie drehen sich mit der Einfahrt */
-  .bogies i {
+  /* Zwei Drehgestelle mit je zwei Rädern: dunkler Rahmen, Räder mit Speichen, sie drehen sich mit der Einfahrt */
+  .bogies {
     position: absolute;
-    bottom: -0.9375rem;
-    width: 1.875rem;
-    height: 1.875rem;
+    left: 0;
+    right: 0;
+    bottom: -0.95rem;
+    pointer-events: none;
+  }
+
+  .bogie {
+    position: absolute;
+    bottom: 0;
+    width: 5.6rem;
+    height: 1.9rem;
+  }
+
+  .bogie::before {
+    content: "";
+    position: absolute;
+    left: 0.2rem;
+    right: 0.2rem;
+    top: 0;
+    height: 0.8rem;
+    border-radius: 0.5rem 0.5rem 0.2rem 0.2rem;
+    background: var(--text);
+  }
+
+  .bogie:first-child {
+    left: 9%;
+  }
+
+  .bogie:last-child {
+    right: calc(var(--nose, 6.5rem) + 8%);
+  }
+
+  .bogie i {
+    position: absolute;
+    bottom: 0;
+    width: 1.55rem;
+    height: 1.55rem;
     border-radius: 50%;
-    background: radial-gradient(circle, #fff 0 18%, var(--red) 18% 34%, var(--text) 34%);
+    background:
+      radial-gradient(circle, #e6e9ee 0 15%, var(--red) 15% 24%, transparent 25%),
+      repeating-conic-gradient(from 0deg, #8a919d 0 10deg, var(--text) 10deg 60deg);
+    box-shadow: 0 0 0 0.16rem var(--text);
     transform: rotate(calc((1 - var(--arrive)) * -1100deg));
   }
 
-  .bogies i:first-child {
-    left: 12%;
+  .bogie i:first-child {
+    left: 0.25rem;
   }
 
-  .bogies i:last-child {
-    right: 12%;
+  .bogie i:last-child {
+    right: 0.25rem;
   }
 
   /* Die Schiene: eine Linie mit Schwellen darunter, über die volle Breite bis an den Rand */
@@ -244,7 +376,16 @@
       display: none;
     }
 
+    /* Handy: der Wagen steht hochkant, eine seitliche Nase passt dort nicht, er bleibt ein abgerundeter Waggon */
     .car {
+      --nose: 0rem;
+    }
+
+    .nose {
+      display: none;
+    }
+
+    .hull {
       border-radius: 2rem 2rem 0.875rem 0.875rem;
       padding: 0.5625rem 0.5625rem 0;
     }
@@ -258,10 +399,14 @@
       padding: 0.55rem 0.3rem 0.6rem;
     }
 
-    .bogies i {
-      width: 1.625rem;
-      height: 1.625rem;
-      bottom: -0.8125rem;
+    .bogie {
+      width: 4.4rem;
+      height: 1.6rem;
+    }
+
+    .bogie i {
+      width: 1.3rem;
+      height: 1.3rem;
     }
 
     .rail {
