@@ -22,7 +22,7 @@
   <div class="sc-stage">
     <h2 class="say wide">
       <span class="w" style="--i:0"><span class="wi sized"><span class="ghost" aria-hidden="true">{label(fin)}</span><span class="live">{label(dh)}</span></span></span>
-      <span class="w" style="--i:2"><span class="wi">im Zug.</span></span>
+      <span class="w" style="--i:2"><span class="wi">im <span class="special">Zug</span>.</span></span>
     </h2>
 
     <div class="days" role="img" aria-label="{total} Stunden im Zug, jede Zeile ein ganzer Tag">

@@ -75,7 +75,7 @@
         <span class="w" style="--i:0"><span class="wi">Ein</span></span>
         <span class="w" style="--i:1"><span class="wi">Jahr,</span></span>
         <span class="w" style="--i:2"><span class="wi">eine</span></span>
-        <span class="w" style="--i:3"><span class="wi">Linie.</span></span>
+        <span class="w" style="--i:3"><span class="wi special">Linie.</span></span>
       </h2>
 
       <div class="counter" aria-live="off">

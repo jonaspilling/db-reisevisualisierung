@@ -118,7 +118,7 @@
     <div class="copy" style="opacity:{1 - kA}">
       <h2 class="say">
         <span class="w" style="--i:0"><span class="wi">Längste</span></span>
-        <span class="w" style="--i:1"><span class="wi">Fahrt:</span></span>
+        <span class="w" style="--i:1"><span class="wi special">Fahrt:</span></span>
       </h2>
 
       <div class="counter">
@@ -177,7 +177,7 @@
     {#if bOn}
       <div class="railjet" bind:this={rjEl} style="opacity:{k};visibility:{k > 0 ? 'visible' : 'hidden'}">
         <div class="rj-copy">
-          <h2 class="rj-say">{isShortest ? "Kürzeste Fahrt:" : "Und einmal:"} {rjLeg.label.replace(/^RJ/, "Railjet RJ")}.</h2>
+          <h2 class="rj-say">{#if isShortest}<span class="special">Kürzeste</span> Fahrt:{:else}Und einmal:{/if} {rjLeg.label.replace(/^RJ/, "Railjet RJ")}.</h2>
 
           <div class="ticket" style="transform:translateX({(1 - fB) * 10}%)">
             <div class="route">

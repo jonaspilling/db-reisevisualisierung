@@ -71,6 +71,13 @@
   --s-soft: rgba(255, 255, 255, 0.12);
 }
 
+/* Akzentwort: ein einzelnes Wort pro Überschrift in der Sonderschrift */
+.special {
+  font-family: var(--accent);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
 /* Der Satz: groß und kurz */
 .say {
   font-family: var(--display);

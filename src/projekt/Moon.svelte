@@ -16,7 +16,7 @@
 <section class="scene t-light" style="--dwell:1" data-ms="2800" use:scene={(v) => (p = v)}>
   <div class="sc-stage">
     <h2 class="say wide">
-      <Words text="Bis zum Mond sind es noch" />
+      <Words text="Bis zum *Mond sind es noch" />
       <span class="w" style="--i:6"><span class="wi hl">{years}</span></span>
       <Words text="Jahre." from={7} />
     </h2>

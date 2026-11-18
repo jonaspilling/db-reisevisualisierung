@@ -113,7 +113,7 @@
 
 <div class="container">
   <div class="page-head split">
-    <h1>So liest du die <span class="hl">Karte</span></h1>
+    <h1>So liest du die <span class="hl special">Karte</span></h1>
     <p class="lead" use:reveal={160}>
       {trips.length} Bahnfahrten, {totalKm.toLocaleString("de-DE")} Kilometer, {stations.length} Bahnhöfe. Du musst nichts
       lesen: probier es unten einfach aus.

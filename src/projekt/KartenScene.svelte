@@ -31,7 +31,7 @@
       <h2 class="say">
         <span class="w" style="--i:0"><span class="wi">Fahrt</span></span>
         <span class="w" style="--i:1"><span class="wi">für</span></span>
-        <span class="w" style="--i:2"><span class="wi">Fahrt.</span></span>
+        <span class="w" style="--i:2"><span class="wi special">Fahrt.</span></span>
       </h2>
       <div class="aside">
         <p class="sub">Spiel das Jahr ab, zieh an der Zeitleiste oder fahr mit der Maus über eine Mauer.</p>

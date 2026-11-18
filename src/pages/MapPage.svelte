@@ -3418,7 +3418,7 @@
   }
 
   .full .side {
-    top: 15.4rem;
+    top: 18.2rem;
     right: 0;
     bottom: 5.9rem;
     width: 17.5rem;

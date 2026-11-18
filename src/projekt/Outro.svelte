@@ -25,13 +25,6 @@
 </section>
 
 <style>
-  /* Sonderschrift joc: rund und sehr dick, nur dieses eine Wort */
-  .special {
-    font-family: var(--special);
-    font-weight: 900;
-    letter-spacing: 0;
-  }
-
   .outro {
     position: relative;
     background: var(--s-bg);

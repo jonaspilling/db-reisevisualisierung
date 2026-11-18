@@ -7,7 +7,7 @@
 <!-- Normale Fläche (keine angeheftete Bühne): schiebt sich über die letzte Szene -->
 <section class="scene flow t-light" aria-labelledby="kulissen">
   <div class="sc-stage">
-    <h2 id="kulissen" class="say wide" use:reveal>So ist das entstanden.</h2>
+    <h2 id="kulissen" class="say wide" use:reveal>So ist das <span class="special">entstanden</span>.</h2>
 
     <div class="cols">
       <div use:reveal>

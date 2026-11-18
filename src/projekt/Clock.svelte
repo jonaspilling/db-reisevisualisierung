@@ -42,7 +42,7 @@
   <div class="sc-stage">
     <div class="copy">
       <h2 class="say">
-        <Words text="Früheste Abfahrt:" />
+        <Words text="Früheste *Abfahrt:" />
         <span class="w" style="--i:2"><span class="wi hl">{story.earliest.abfahrt}&nbsp;Uhr.</span></span>
       </h2>
       <p class="sub">
