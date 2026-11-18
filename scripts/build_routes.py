@@ -79,6 +79,20 @@ VIA_POINTS = {
     ("Frankfurt(M) Flughafen Fernbf", "Frankfurt(Main)Hbf"): _AIRPORT_VIA[::-1],
 }
 VIA_SNAP_KM = 0.5
+
+# Stuttgart <-> Ulm: Zwei Strecken stehen zur Wahl. Die Schnellfahrstrecke (Wendlingen-Ulm, über Merklingen) ist der
+# kürzeste Weg und gilt für alle Fahrten. Die ICEs über Darmstadt, Bensheim und Heidelberg fahren dagegen die alte
+# Filstalbahn über Göppingen und Geislingen; für sie werden diese beiden Orte als Zwischenpunkte vorgegeben.
+_FILSTAL_VIA = [[9.6520, 48.7030], [9.8260, 48.6200]]  # Göppingen, Geislingen (Steige)
+
+
+def via_points(stops, station_a, station_b):
+    fixed = VIA_POINTS.get((station_a, station_b))
+    if fixed:
+        return fixed
+    if {station_a, station_b} == {"Stuttgart Hbf", "Ulm Hbf"} and "Heidelberg Hbf" in stops:
+        return _FILSTAL_VIA if station_a == "Stuttgart Hbf" else _FILSTAL_VIA[::-1]
+    return []
 # Fehlende Verbindungen im OSM-Auszug: Die Gleisverbindung vom Frankfurter Hbf nach Westen (Richtung Niederrad)
 # fehlt dort, der Weg machte einen Umweg über die Brücke nach Süden und wieder zurück. Hier wird sie von Hand
 # nachgezogen: Paare von Punkten [lon, lat], die als Direktverbindung ins Netz kommen.
@@ -502,7 +516,7 @@ def route_trip(stops, graph, node_coords):
     """Berechnet den Gleisweg einer ganzen Fahrt als zusammenhängende Linie."""
     nodes = []
     for station_a, station_b in zip(stops, stops[1:]):
-        vias = VIA_POINTS.get((station_a, station_b), [])
+        vias = via_points(stops, station_a, station_b)
         # Auf Abschnitten mit Zwischenpunkten (Richtung Flughafen) steigt die Strecke am Einstiegsknoten ein,
         # der direkt an den durchgehenden Gleisen hängt; alle anderen Fahrten behalten den nächsten Gleisknoten.
         chain = [(hinted_node(station_a, node_coords) if vias else None) or nearest_track_node(station_a, node_coords)]
