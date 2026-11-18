@@ -168,6 +168,30 @@
     opacity: 0;
   }
 
+  /* Kartenansicht: die Leiste ist Teil des Rahmens um die Karte, flach und in der Farbe des Rahmens */
+  .header.onmap::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3.9rem;
+    background: var(--frame);
+  }
+
+  .header.onmap .glass {
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .header.onmap .switch {
+    box-shadow: inset 0 0 0 1px var(--frame-line);
+  }
+
+  .header.onmap .info:hover {
+    background: rgba(40, 45, 55, 0.07);
+  }
+
   .bar {
     position: relative;
     display: grid;

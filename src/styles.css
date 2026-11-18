@@ -23,6 +23,8 @@
 
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
   --header-h: 0px; /* kein Header mehr: die Menü-Pille schwebt über dem Inhalt */
+  --frame: #f3f5f8; /* Rahmen der Kartenansicht: Leiste, Werkzeuge, Optionen und Zeitleiste in einem Ton */
+  --frame-line: #cdd3db;
   --bar-h: 4.5rem; /* so viel Platz braucht Inhalt oben, um unter der Pille zu bleiben */
   --pad: clamp(1.25rem, 3.4vw, 3.5rem);
   --max: 110rem;

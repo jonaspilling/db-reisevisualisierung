@@ -815,8 +815,8 @@
   function padding() {
     if (full) {
       return stageW > 640
-        ? { top: 90, left: 90, right: 90, bottom: 230 }
-        : { top: 130, left: 20, right: 20, bottom: 270 };
+        ? { top: 90, left: 100, right: 306, bottom: 120 }
+        : { top: 110, left: 24, right: 24, bottom: 160 };
     }
     // Handy ohne Bedienfelder: die ganze Fläche für die Strecken
     if (bare) return { top: 28, left: 12, right: 12, bottom: 28 };
@@ -3327,6 +3327,277 @@
     }
     .speeds {
       margin-left: auto;
+    }
+  }
+
+  /* ================= Kartenansicht: ein Rahmen um den ganzen Bildschirm =================
+     Oben die Leiste (Header), links Werkzeuge, rechts Legende und Optionen, unten die Zeitleiste, alles in der
+     Farbe des Rahmens. Die Karte füllt weiter die ganze Fläche, der Rahmen wird darüber gemalt (Schatten um ein
+     abgerundetes Fenster); Bedienelemente liegen darüber und sind nicht abgeschnitten. */
+  .page-map.full {
+    background: var(--frame);
+  }
+
+  .full .stage::after {
+    content: "";
+    position: absolute;
+    inset: 4rem 17.5rem 5.9rem 4.6rem;
+    border-radius: 1.2rem;
+    box-shadow: 0 0 0 100vmax var(--frame), inset 0 0 0 1px rgba(40, 45, 55, 0.16);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .full .left {
+    top: 4.2rem;
+    right: 0;
+    left: auto;
+    width: 17.5rem;
+    padding: 0 1.1rem 0 0.9rem;
+    --dx: 1.25rem;
+  }
+
+  .full .left .info {
+    background: none;
+    box-shadow: none;
+    padding: 0.3rem 0.1rem 0.5rem;
+  }
+
+  .full .side {
+    top: 15.4rem;
+    right: 0;
+    bottom: 5.9rem;
+    width: 17.5rem;
+    max-height: none;
+    padding: 0 0.9rem 0 0.9rem;
+    background: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .full .side-x {
+    display: none;
+  }
+
+  /* Knöpfe und Reiter: keine weißen Flächen mehr, sondern Linien im Ton des Rahmens */
+  .full .seg2 {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--frame-line);
+  }
+
+  .full .seg2 button.on {
+    background: var(--text);
+    color: #fff;
+    box-shadow: none;
+  }
+
+  .full .ghost {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--frame-line);
+  }
+
+  .full .ghost:hover {
+    background: rgba(40, 45, 55, 0.07);
+  }
+
+  .full .speeds {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--frame-line);
+  }
+
+  .full .speeds button.on {
+    background: rgba(40, 45, 55, 0.1);
+    box-shadow: none;
+  }
+
+  /* Werkzeuge links im Rahmen */
+  :global(.page-map.full .maplibregl-ctrl-top-right) {
+    top: 4.2rem;
+    left: 0.6rem;
+    right: auto;
+    bottom: auto;
+  }
+
+  :global(.page-map.full .maplibregl-ctrl-group) {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--frame-line);
+    border-radius: 0.9rem;
+  }
+
+  :global(.page-map.full .maplibregl-ctrl-group button) {
+    background-color: transparent;
+  }
+
+  :global(.page-map.full .maplibregl-ctrl-group button:hover) {
+    background-color: rgba(40, 45, 55, 0.07);
+  }
+
+  /* Zeitleiste: eine Zeile im unteren Rahmen: Abspielen, Datum, Leiste, Zähler, Tempo */
+  .full .dock {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: 5.9rem;
+    transform: none;
+    padding: 0 1.4rem 0 1rem;
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+  }
+
+  .full .dock .readout,
+  .full .dock .row {
+    display: contents;
+  }
+
+  .full .dock .transport {
+    order: 1;
+  }
+
+  .full .dock .date {
+    order: 2;
+    white-space: nowrap;
+    min-width: 11rem;
+  }
+
+  .full .dock .scrub {
+    order: 3;
+    flex: 1;
+    min-width: 8rem;
+  }
+
+  .full .dock .counters {
+    order: 4;
+  }
+
+  .full .dock .speeds {
+    order: 5;
+  }
+
+  .full .dock.muted .transport,
+  .full .dock.muted .scrub,
+  .full .dock.muted .speeds {
+    opacity: 0.5;
+  }
+
+  /* Auswahl-Details: links auf der Karte, neben den Werkzeugen */
+  .full .detail {
+    left: 5.6rem;
+    top: 5.2rem;
+    bottom: 7.4rem;
+  }
+
+  /* Quellenangabe: in der Ecke des Kartenfensters */
+  :global(.page-map.full .maplibregl-ctrl-bottom-right) {
+    right: 17.8rem;
+    bottom: 6.2rem;
+  }
+
+  /* Mittlere Breite: die Leiste ist kurz, Monatsnamen würden sich überlagern */
+  @container mapwin (max-width: 1250px) {
+    .full .dock .months {
+      display: none;
+    }
+  }
+
+  /* Schmal (Handy): Leiste oben und Zeitleiste unten bilden den Rahmen, Legende und Optionen schweben im Fenster */
+  @container mapwin (max-width: 899px) {
+    .full .stage::after {
+      inset: 3.9rem 0.5rem 8.8rem 0.5rem;
+      border-radius: 1.1rem;
+    }
+
+    .full .left {
+      right: auto;
+      left: 0.8rem;
+      top: 4.4rem;
+      width: 9.5rem;
+      padding: 0;
+      --dx: -1.25rem;
+    }
+
+    .full .left .info {
+      background: var(--bg);
+      box-shadow: 0 0 0 1px var(--line);
+      padding: 0.5rem 0.65rem 0.55rem;
+    }
+
+    .full .side {
+      top: 4.4rem;
+      right: 0.8rem;
+      bottom: auto;
+      width: calc(100% - 1.6rem);
+      max-height: calc(100% - 15rem);
+      padding: 0;
+      background: var(--bg);
+      border-radius: 1.125rem;
+      box-shadow: 0 0 0 1px rgba(40, 45, 55, 0.06), 0 1.125rem 2.5rem -1.25rem rgba(40, 45, 55, 0.4);
+    }
+
+    .full .side:not(.open) {
+      width: auto;
+      background: none;
+      box-shadow: none;
+    }
+
+    .full .side-x {
+      display: inline-flex;
+    }
+
+    .full .dock {
+      height: auto;
+      display: grid;
+      gap: 0.15rem;
+      padding: 0.6rem 0.9rem 0.8rem;
+      background: var(--frame);
+    }
+
+    .full .dock .readout {
+      display: flex;
+    }
+
+    .full .dock .row {
+      display: flex;
+    }
+
+    .full .dock .date,
+    .full .dock .transport,
+    .full .dock .scrub,
+    .full .dock .counters,
+    .full .dock .speeds {
+      order: 0;
+      min-width: 0;
+    }
+
+    .full .dock.muted .row {
+      opacity: 0.5;
+    }
+
+    .full .dock.muted .transport,
+    .full .dock.muted .scrub,
+    .full .dock.muted .speeds {
+      opacity: 1;
+    }
+
+    .full .detail {
+      left: 0.8rem;
+      top: 9.2rem;
+      bottom: auto;
+    }
+
+    :global(.page-map.full .maplibregl-ctrl-top-right) {
+      top: auto;
+      left: 0.8rem;
+      bottom: 9.4rem;
+    }
+
+    :global(.page-map.full .maplibregl-ctrl-bottom-right) {
+      right: 0.8rem;
+      bottom: 9.4rem;
     }
   }
 </style>
