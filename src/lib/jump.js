@@ -64,8 +64,8 @@ export function jumpToInfo() {
 
 // ---------------------------------------------------------------------------------------------------------------
 // Weiter weg liegende Ziele: kein Durchscrollen (dabei würde jede Szene dazwischen abgespielt), sondern ein
-// Übergang. Eine rote Fläche schiebt sich über die Seite, darunter springt die Seite sofort ans Ziel, dann schiebt
-// sich die Fläche weiter und gibt das Ziel frei. Nahe Ziele (weniger als zwei Bildschirme) fliegen wie bisher.
+// "Swoosh": Die Seite wird unscharf, Streifen rauschen in Fahrtrichtung durchs Bild, und dahinter springt die Seite
+// sofort ans Ziel. Danach löst sich der Schleier wieder auf. Nahe Ziele (weniger als zwei Bildschirme) fliegen wie bisher.
 let warping = false;
 
 export function goTo(target) {
@@ -86,18 +86,42 @@ export function goTo(target) {
   if (stop) stop();
 
   const down = dist > 0;
+  // Beim Runterspringen fliegt der Inhalt nach oben vorbei, beim Hochspringen nach unten
+  const dir = down ? -1 : 1;
   const el = document.createElement("div");
-  el.className = "warp";
+  el.className = "swoosh";
   el.setAttribute("aria-hidden", "true");
-  el.innerHTML = '<span class="warp-mark"><i></i><i></i><i></i><i></i></span>';
+  el.style.setProperty("--sw-dir", down ? "0deg" : "180deg");
+
+  const COLORS = ["rgba(236,0,22,0.85)", "rgba(40,45,55,0.55)", "rgba(236,0,22,0.5)", "rgba(40,45,55,0.35)", "rgba(255,255,255,0.95)"];
+  const streaks = [];
+  const N = window.innerWidth < 560 ? 16 : 28;
+  for (let i = 0; i < N; i++) {
+    const s = document.createElement("i");
+    s.style.setProperty("--x", `${(i / N) * 100 + Math.random() * (100 / N)}%`);
+    s.style.setProperty("--w", `${2 + Math.random() * 5}px`);
+    s.style.setProperty("--h", `${28 + Math.random() * 46}vh`);
+    s.style.setProperty("--c", COLORS[i % COLORS.length]);
+    el.append(s);
+    streaks.push(s);
+  }
   document.body.append(el);
 
-  const ease = "cubic-bezier(0.7, 0, 0.3, 1)";
+  const ease = "cubic-bezier(0.55, 0, 0.25, 1)";
   const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  el.animate([{ transform: `translateY(${down ? 100 : -100}%)` }, { transform: "translateY(0)" }], { duration: 420, easing: ease, fill: "forwards" })
+  const H = window.innerHeight;
+
+  // Streifen: jeder fliegt einmal komplett durchs Bild, versetzt und unterschiedlich schnell
+  const runs = streaks.map((s, i) =>
+    s.animate(
+      [{ transform: `translateY(${-dir * 130}vh)` }, { transform: `translateY(${dir * 130}vh)` }],
+      { duration: 520 + (i % 5) * 70, delay: (i % 7) * 35, easing: ease, fill: "both", iterations: 2 }
+    )
+  );
+
+  el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, easing: "ease-out", fill: "forwards" })
     .finished.then(async () => {
-      // Handy: ein noch laufendes Ausrollen des Fingers (Momentum) würde das Setzen der Position überstimmen.
-      // Kurz Overflow sperren bricht es ab, dann wird gesetzt und nachgeprüft, bis die Seite wirklich am Ziel steht.
+      // Hinter dem Schleier an die Zielstelle springen; ein noch auslaufendes Wischen (Handy) wird dafür kurz angehalten
       const prevOv = root.style.overflow;
       root.style.scrollBehavior = "auto";
       root.style.overflow = "hidden";
@@ -117,10 +141,12 @@ export function goTo(target) {
       await frame();
       if (Math.abs(window.scrollY - dest()) > 2) setY();
       root.style.scrollBehavior = "";
-      await el.animate([{ transform: "translateY(0)" }, { transform: `translateY(${down ? -100 : 100}%)` }], { duration: 520, easing: ease, fill: "forwards" }).finished;
+      // Der Schleier löst sich auf und gibt die Zielstelle frei
+      await el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 460, easing: "ease-in", fill: "forwards" }).finished;
     })
     .catch(() => {})
     .finally(() => {
+      runs.forEach((r) => r.cancel());
       el.remove();
       warping = false;
     });

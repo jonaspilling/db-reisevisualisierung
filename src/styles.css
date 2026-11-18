@@ -260,35 +260,30 @@ html.has-vt .page.full {
   }
 }
 
-/* Übergang für weite Sprünge (siehe lib/jump.js): liegt über der Seite, unter der Menü-Pille */
-.warp {
+/* Übergang für weite Sprünge (siehe lib/jump.js): ein "Swoosh". Die Seite wird kurz unscharf, Streifen rauschen in
+   Fahrtrichtung durchs Bild, dahinter springt die Seite unsichtbar ans Ziel. Nichts wird durchgescrollt. */
+.swoosh {
   position: fixed;
   inset: 0;
   z-index: 2500;
-  display: grid;
-  place-items: center;
-  background: var(--red);
-  transform: translateY(100%);
+  overflow: hidden;
   pointer-events: all;
+  opacity: 0;
+  background: linear-gradient(var(--sw-dir, 180deg), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.78) 50%, rgba(255, 255, 255, 0.5));
+  backdrop-filter: blur(9px) saturate(1.2);
+  -webkit-backdrop-filter: blur(9px) saturate(1.2);
 }
 
-.warp-mark {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.35rem;
-  height: 2.6rem;
+.swoosh i {
+  position: absolute;
+  top: 0;
+  left: var(--x);
+  width: var(--w);
+  height: var(--h);
+  border-radius: 99px;
+  background: linear-gradient(var(--sw-dir, 180deg), transparent, var(--c), transparent);
+  will-change: transform;
 }
-
-.warp-mark i {
-  width: 0.55rem;
-  border-radius: 0.2rem;
-  background: #fff;
-}
-
-.warp-mark i:nth-child(1) { height: 45%; }
-.warp-mark i:nth-child(2) { height: 75%; }
-.warp-mark i:nth-child(3) { height: 100%; }
-.warp-mark i:nth-child(4) { height: 62%; }
 
 /* Einblenden beim Scrollen */
 .reveal {
