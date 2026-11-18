@@ -2,11 +2,12 @@
   import { onMount } from "svelte";
   import { isHomePath, goSection } from "./router.svelte.js";
   import { jumpToInfo } from "./jump.js";
+  import Logo from "./Logo.svelte";
 
   let { path } = $props();
 
-  // Platzhalter für Name und Logo: hier an einer Stelle austauschbar
-  const BRAND = { name: "Trasse", suffix: "26" };
+  // Name und Zeichen: hier an einer Stelle austauschbar
+  const BRAND = { first: "Bord", second: "bistro" };
 
   // Zwei Ziele: die interaktive Karte (eigene Seite) und das Projekt (Startseite mit allem anderen).
   // Statistik und Erklärung zählen zum Projekt.
@@ -96,8 +97,9 @@
   <div class="veil" aria-hidden="true"></div>
 
   <div class="bar">
-    <a class="brand glass" href="#/" onclick={restart} aria-label="{BRAND.name} {BRAND.suffix}: zum Anfang">
-      <span class="name">{BRAND.name}<b>{BRAND.suffix}</b></span>
+    <a class="brand glass" href="#/" onclick={restart} aria-label="{BRAND.first}{BRAND.second}: neu laden, zum Anfang">
+      <Logo size={26} />
+      <span class="name">{BRAND.first}<b>{BRAND.second}</b></span>
     </a>
 
     <nav class="switch glass" style="--i:{index}" aria-label="Hauptnavigation">
@@ -218,8 +220,9 @@
     justify-self: start;
     display: inline-flex;
     align-items: center;
+    gap: 0.55rem;
     height: 2.75rem;
-    padding-inline: 1rem;
+    padding-inline: 0.55rem 1rem;
     border-radius: 62.4375rem;
     text-decoration: none;
     transition: transform 160ms var(--ease);
@@ -240,7 +243,6 @@
 
   .name b {
     color: var(--red);
-    margin-left: 0.2em;
   }
 
   .info {
@@ -391,7 +393,8 @@
 
     .brand {
       height: 2.5rem;
-      padding-inline: 0.8rem;
+      gap: 0.4rem;
+      padding-inline: 0.4rem 0.75rem;
     }
 
     .name {
@@ -426,18 +429,34 @@
     }
   }
 
-  @media (max-width: 380px) {
+  @media (max-width: 400px) {
+    .bar {
+      gap: 0.35rem;
+    }
+
     .brand {
-      padding-inline: 0.65rem;
+      gap: 0.3rem;
+      padding-inline: 0.35rem 0.6rem;
+    }
+
+    .brand :global(.logo) {
+      width: 1.4rem;
+      height: 1.4rem;
     }
 
     .name {
-      font-size: 0.9rem;
+      font-size: 0.82rem;
     }
 
     .switch a {
-      min-width: 3.6rem;
-      padding-inline: 0.55rem;
+      min-width: 3.3rem;
+      padding-inline: 0.5rem;
+      font-size: 0.82rem;
+    }
+
+    .info {
+      width: 2.3rem;
+      height: 2.3rem;
     }
   }
 

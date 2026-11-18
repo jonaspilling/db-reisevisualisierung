@@ -1,6 +1,7 @@
 <script>
   import { router, isHomePath } from "./router.svelte.js";
   import { goTo } from "./jump.js";
+  import Logo from "./Logo.svelte";
 
   // "Projekt" in der Fußzeile bringt immer ganz nach oben: auf der Startseite gleitet die Seite hoch,
   // von Statistik oder Erklärung geht es zur Startseite und dort an den Anfang (nicht an die letzte Stelle).
@@ -19,7 +20,7 @@
   <div class="container">
     <div class="cols">
       <div class="about">
-        <p class="brand">Trasse<b>26</b></p>
+        <p class="brand"><Logo size={44} />Bord<b>bistro</b></p>
         <p>
           Eine Visualisierung meiner Bahnreisen 2026: 16 Fernverkehrsfahrten, nachgezeichnet auf dem echten Gleisnetz
           und als scrollbare Geschichte erzählt. Uni-Projekt im Fach Information Design, 3. Semester.
@@ -74,6 +75,9 @@
   }
 
   .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
     font-size: clamp(2rem, 3.4vw, 2.8rem);
     font-weight: 800;
     letter-spacing: -0.03em;
@@ -84,7 +88,7 @@
 
   .brand b {
     color: var(--red);
-    margin-left: 0.2em;
+    margin-left: 0;
   }
 
   h4 {

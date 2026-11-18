@@ -2,7 +2,7 @@
 // stehen direkt darin. Die Datei lässt sich verschicken und per Doppelklick oder auf dem iPad öffnen.
 // Nur die Kartenkacheln und die Schrift kommen weiter aus dem Netz (Internet nötig).
 //
-// Aufruf:  npm run build:portable   ->  portable/Trasse26.html
+// Aufruf:  npm run build:portable   ->  portable/Bordbistro.html
 import fs from "node:fs";
 import path from "node:path";
 
@@ -41,6 +41,6 @@ html = html
   .replace("</body>", `<script type="module">${safe(js)}</script>\n</body>`);
 
 fs.mkdirSync("portable", { recursive: true });
-const out = path.join("portable", "Trasse26.html");
+const out = path.join("portable", "Bordbistro.html");
 fs.writeFileSync(out, html);
 console.log(`${out}: ${(fs.statSync(out).size / 1024 / 1024).toFixed(1)} MB`);

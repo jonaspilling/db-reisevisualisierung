@@ -118,6 +118,11 @@
   let orbit = $state(false);
   // Fahrten-Menü: ausgewählte Fahrten werden komplett gezeigt, die Zeitleiste pausiert
   let selected = $state([]); // Indizes in trips
+  // Bahnhof, auf den geklickt wurde: die Karte zeigt dann nur die Fahrten, die dort gehalten haben
+  let stationSel = $state(null); // { place, count }
+  $effect(() => {
+    if (!selected.length) stationSel = null;
+  });
   let selSet = null; // dasselbe als Set für applyU (nicht reaktiv)
   let tripsInit = false;
   let userMoved = false; // die Kamera wurde von Hand bewegt: nicht mehr automatisch einpassen
@@ -1415,7 +1420,24 @@
     });
 
     map.on("zoomend", rebuildGeometry);
-    const placeHit = (point) => map.queryRenderedFeatures(point, { layers: ["dots"] })[0];
+    // Bahnhöfe sind kleine Punkte: Treffer in einem Umkreis um den Zeiger oder Finger suchen (am Handy größer),
+    // bei mehreren der Punkt, der am nächsten liegt
+    const placeHit = (point) => {
+      const r = window.matchMedia("(pointer: coarse)").matches ? 18 : 10;
+      const hits = map.queryRenderedFeatures([[point.x - r, point.y - r], [point.x + r, point.y + r]], { layers: ["dots"] });
+      if (!hits.length) return undefined;
+      let best = hits[0];
+      let bd = Infinity;
+      for (const h of hits) {
+        const q = map.project(h.geometry.coordinates);
+        const d = (q.x - point.x) ** 2 + (q.y - point.y) ** 2;
+        if (d < bd) {
+          bd = d;
+          best = h;
+        }
+      }
+      return best;
+    };
 
     // Die Linien sind schmal: Treffer in einem kleinen Umkreis um den Mauszeiger suchen
     function pickRun(point) {
@@ -1456,6 +1478,7 @@
     const handleMove = (e) => {
       if (!loaded) return;
       const pl = placeHit(e.point);
+      map.getCanvas().style.cursor = pl ? "pointer" : "";
       const run = pl ? null : pickRun(e.point);
       if (!pl && !run) {
         if (hoverOn && !clearTimer) scheduleClear();
@@ -1506,10 +1529,13 @@
       if (!loaded) return;
       const pl = placeHit(e.point);
       if (pl) {
-        const st = stationEng.find((s) => s.name === pl.properties.name);
+        // Die Punkte tragen den Ortsnamen; bei mehreren Bahnhöfen im selben Ort gilt der nächstgelegene
+        const [lon, lat] = pl.geometry.coordinates;
+        const st = stationEng
+          .filter((s) => s.place === pl.properties.name)
+          .sort((a, b) => Math.hypot(a.coords[0] - lon, a.coords[1] - lat) - Math.hypot(b.coords[0] - lon, b.coords[1] - lat))[0];
         if (st) {
-          const list = [...new Set(st.at.map((a) => a.ti))].map((ti) => trips[ti]).sort((a, b) => a.t0 - b.t0);
-          pick({ title: st.place, sub: `${list.length}× besucht`, list }, st.coords[0], st.coords[1]);
+          selectStation(st);
           return;
         }
       }
@@ -1519,6 +1545,7 @@
         pick({ title: `${list.length}× befahren`, sub: "Diese Fahrten laufen hier entlang", list, cell: run }, run.lon, run.lat);
       } else {
         closePick();
+        if (stationSel) clearSelection();
       }
     });
     const onKey = (e) => {
@@ -1735,7 +1762,24 @@
     });
   }
 
+  // Klick auf einen Bahnhof: nur die Fahrten zeigen, die dort gehalten haben, und sie ins Bild holen
+  function selectStation(st) {
+    const idx = [...new Set(st.at.map((a) => a.ti))].sort((a, b) => a - b);
+    if (!idx.length) return;
+    picked = null;
+    pinnedCell = null;
+    hoverOn = false;
+    setFocus();
+    map.easeTo({ padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 0 });
+    selected = idx;
+    stationSel = { place: st.place, count: idx.length };
+    playing = false;
+    follow = false;
+    fitSelection();
+  }
+
   function toggleTrip(i) {
+    stationSel = null;
     const had = selected.includes(i);
     selected = had ? selected.filter((x) => x !== i) : [...selected, i];
     if (!had) {
@@ -1750,6 +1794,7 @@
   }
 
   function selectAll() {
+    stationSel = null;
     selected = trips.map((_, k) => k);
     playing = false;
     follow = false;
@@ -1974,10 +2019,19 @@
           {#if hoverInfo.list.length > 4}<p class="more-n">+ {hoverInfo.list.length - 4} weitere</p>{/if}
         {:else if hoverInfo && hoverInfo.kind === "station"}
           <h2>{hoverInfo.name}</h2>
-          <p class="more-n">{hoverInfo.n}× besucht</p>
+          <p class="more-n">{hoverInfo.n}× besucht · Klicken: nur diese Fahrten</p>
         {/if}
       </div>
     </div>
+
+    {#if stationSel}
+      <div class="stchip" role="status">
+        <span>Nur Fahrten über <b>{stationSel.place}</b> · {stationSel.count}×</span>
+        <button type="button" onclick={clearSelection} aria-label="Auswahl aufheben">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none" /></svg>
+        </button>
+      </div>
+    {/if}
 
     <!-- Zeitleiste unten -->
     <div class="dock" class:muted={selected.length > 0}>
@@ -3648,6 +3702,67 @@
     :global(.page-map.full .maplibregl-ctrl-bottom-right) {
       right: 1.1rem;
       bottom: 9rem;
+    }
+  }
+
+  /* Auswahl über einen Bahnhof: Hinweis oben im Kartenfenster, ein Klick auf das Kreuz hebt sie auf */
+  .stchip {
+    position: absolute;
+    z-index: 830;
+    top: 4.6rem;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 1.6rem);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.4rem 0.35rem 0.95rem;
+    border-radius: 62.4375rem;
+    background: var(--text);
+    color: #fff;
+    font-size: 0.9rem;
+    box-shadow: 0 0.6rem 1.4rem -0.6rem rgba(40, 45, 55, 0.7);
+    animation: chip-in 320ms var(--ease) both;
+  }
+
+  .stchip span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stchip button {
+    flex: none;
+    width: 1.9rem;
+    height: 1.9rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    transition: background-color 160ms var(--ease);
+  }
+
+  .stchip button:hover {
+    background: var(--red);
+  }
+
+  .full .stchip {
+    left: calc(4.6rem + (100% - 22.1rem) / 2);
+  }
+
+  @container mapwin (max-width: 899px) {
+    .full .stchip {
+      left: 50%;
+      top: 4.7rem;
+    }
+  }
+
+  @keyframes chip-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -0.5rem);
     }
   }
 </style>

@@ -55,7 +55,7 @@
           </div>
           <div class="livery">
             <i class="stripe" aria-hidden="true"></i>
-            <div class="plate"><b>Trasse 26</b><span>Fahrten 2026</span></div>
+            <div class="plate"><b>Bordbistro</b><span>Fahrten 2026</span></div>
           </div>
         </div>
         <div class="bogies" aria-hidden="true"><i></i><i></i></div>

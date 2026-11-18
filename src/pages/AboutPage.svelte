@@ -143,8 +143,8 @@
           {#each Array(16) as _, i}
             <i style="height:{often * 6 + 6}px;background:{lineColor};transition-delay:{i * 6}ms"></i>
           {/each}
-          <span>3D-Mauer</span>
         </div>
+        <p class="wall-lbl">3D-Mauer: so hoch, wie oft gefahren</p>
       </div>
 
       <div class="ctl">
@@ -358,7 +358,7 @@
     gap: 3px;
     height: 5.7rem;
     padding: 0 0.6rem;
-    position: relative;
+    overflow: hidden;
   }
 
   .wall i {
@@ -367,10 +367,9 @@
     transition: height 260ms var(--ease), background-color 200ms var(--ease);
   }
 
-  .wall span {
-    position: absolute;
-    right: 0.6rem;
-    top: 0;
+  /* Die Beschriftung steht unter der Mauer, nie darin: die Mauer wächst nach oben, nicht in den Text */
+  .wall-lbl {
+    padding: 0 0.6rem;
     font-size: 0.74rem;
     font-weight: 800;
     letter-spacing: 0.08em;
