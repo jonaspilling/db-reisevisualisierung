@@ -3512,10 +3512,21 @@
     order: 1;
   }
 
+  /* Feste Breiten: Datum, Zähler und Tempo ändern ihre Größe nie, die Leiste bleibt dadurch immer gleich lang
+     (sonst springt sie, wenn aus "9. Mai" "30. September" wird oder eine Zahl eine Stelle mehr bekommt) */
   .full .dock .date {
     order: 2;
+    flex: none;
+    width: 15.5rem;
     white-space: nowrap;
-    min-width: 11rem;
+  }
+
+  .full .dock .counters {
+    flex: none;
+  }
+
+  .full .dock .counters span {
+    min-width: 4.6rem;
   }
 
   .full .dock .scrub {
@@ -3554,6 +3565,15 @@
   /* Mittlere Breite: die Leiste ist kurz, Monatsnamen würden sich überlagern */
   @container mapwin (max-width: 1250px) {
     .full .dock .months {
+      display: none;
+    }
+
+    .full .dock .date {
+      width: 12.8rem;
+      font-size: 1.2rem;
+    }
+
+    .full .dock .counters span:nth-child(3) {
       display: none;
     }
   }
@@ -3644,6 +3664,15 @@
     .full .dock .counters,
     .full .dock .speeds {
       order: 0;
+      min-width: 0;
+    }
+
+    .full .dock .date {
+      width: auto;
+      flex: initial;
+    }
+
+    .full .dock .counters span {
       min-width: 0;
     }
 

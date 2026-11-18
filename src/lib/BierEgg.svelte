@@ -1,19 +1,15 @@
 <script>
   // Kleines Osterei auf der Statistikseite: Wie viele Biere pro Fahrt im Bordbistro?
   // Eingabe immer genau mit einer Kommastelle (z. B. 2,9). Wer die richtige Zahl trifft, bekommt den Song.
-  import { onDestroy } from "svelte";
+  // Der Song läuft über alle Seiten weiter (siehe music.svelte.js und die kleine Anzeige MiniPlayer).
+  import { music, playSong, toggleSong, seekSong } from "./music.svelte.js";
 
   const ANSWER = "2,9";
-  const SONG = "./audio/bordbistro.mp3";
 
   let value = $state("");
   let state = $state("idle"); // idle | wrong | right
   let hint = $state("");
   let shake = $state(false);
-  let playing = $state(false);
-  let progress = $state(0);
-  let songError = $state(false);
-  let audio;
 
   const complete = $derived(/^\d,\d$/.test(value));
 
@@ -36,7 +32,7 @@
     if (value === ANSWER) {
       state = "right";
       hint = "";
-      start();
+      playSong();
       return;
     }
     state = "wrong";
@@ -46,56 +42,15 @@
     requestAnimationFrame(() => (shake = true));
   }
 
-  function start() {
-    if (!audio) {
-      audio = new Audio(SONG);
-      audio.addEventListener("timeupdate", () => (progress = audio.duration ? audio.currentTime / audio.duration : 0));
-      audio.addEventListener("ended", () => {
-        playing = false;
-        progress = 0;
-      });
-      audio.addEventListener("error", () => {
-        songError = true;
-        playing = false;
-      });
-    }
-    songError = false;
-    audio.currentTime = 0;
-    audio.play().then(
-      () => (playing = true),
-      () => {
-        songError = true;
-        playing = false;
-      }
-    );
-  }
-
-  function toggle() {
-    if (!audio) return start();
-    if (playing) {
-      audio.pause();
-      playing = false;
-    } else {
-      audio.play().then(() => (playing = true), () => {});
-    }
-  }
-
   function seek(e) {
-    if (audio?.duration) audio.currentTime = (+e.currentTarget.value / 1000) * audio.duration;
+    seekSong(+e.currentTarget.value / 1000);
   }
 
+  // Noch mal raten: der Song läuft weiter, er wird über die kleine Anzeige ausgeschaltet
   function again() {
-    audio?.pause();
-    playing = false;
-    progress = 0;
     state = "idle";
     value = "";
   }
-
-  onDestroy(() => {
-    audio?.pause();
-    audio = null;
-  });
 </script>
 
 <section class="egg" class:right={state === "right"} aria-labelledby="egg-title">
@@ -131,8 +86,8 @@
         <span>Genau richtig. Prost!</span>
       </div>
       <div class="now">
-        <button type="button" class="pp" onclick={toggle} aria-label={playing ? "Pause" : "Abspielen"}>
-          {#if playing}
+        <button type="button" class="pp" onclick={toggleSong} aria-label={music.playing ? "Pause" : "Abspielen"}>
+          {#if music.playing}
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor" /></svg>
           {:else}
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
@@ -141,11 +96,11 @@
         <div class="meta">
           <b>Bordbistro</b>
           <span>Teuterekordz</span>
-          <input type="range" min="0" max="1000" value={Math.round(progress * 1000)} oninput={seek} aria-label="Position im Song" />
+          <input type="range" min="0" max="1000" value={Math.round(music.progress * 1000)} oninput={seek} aria-label="Position im Song" />
         </div>
-        <div class="eq" class:on={playing} aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="eq" class:on={music.playing} aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
       </div>
-      {#if songError}<p class="hint">Der Song lässt sich gerade nicht laden.</p>{/if}
+      {#if music.error}<p class="hint">Der Song lässt sich gerade nicht laden.</p>{/if}
       <button type="button" class="again" onclick={again}>Noch mal raten</button>
     </div>
   {/if}

@@ -4,6 +4,7 @@
   import { router, initRouter, isHomePath } from "./lib/router.svelte.js";
   import Header from "./lib/Header.svelte";
   import Footer from "./lib/Footer.svelte";
+  import MiniPlayer from "./lib/MiniPlayer.svelte";
   import { isPhone } from "./lib/scenes.js";
   import StatsPage from "./pages/StatsPage.svelte";
   import AboutPage from "./pages/AboutPage.svelte";
@@ -102,6 +103,7 @@
     {/key}
   {/if}
   {#if router.path !== "/karte"}<Footer />{/if}
+  <MiniPlayer onMap={pageKey === "/karte"} />
 {/if}
 
 <style>
