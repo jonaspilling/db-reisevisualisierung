@@ -58,9 +58,6 @@
             <i class="stripe" aria-hidden="true"></i>
             <div class="plate"><b>Bordbistro</b><span>Fahrten 2026</span></div>
           </div>
-          <!-- Die Front des ICE: das Dach fällt in einer langen Kurve ab, dunkle Frontscheibe, Scheinwerfer -->
-          <i class="screen" aria-hidden="true"></i>
-          <i class="lamp" aria-hidden="true"></i>
           </div>
         </div>
         <div class="bogies" aria-hidden="true">
@@ -140,10 +137,8 @@
     transform: translateX(calc((1 - var(--arrive)) * -112%));
   }
 
-  /* Der Wagen: ein Rumpf, dessen rechtes Ende wie die ICE-Nase in einer langen Kurve nach unten abfällt
-     (elliptische Rundung oben rechts). Der rote Streifen läuft bis ans Ende durch. */
+  /* Der Wagen: ein einzelner Waggon mit abgerundetem Dach. Der rote Streifen läuft über die ganze Länge. */
   .car {
-    --nose: 7rem;
     height: 100%;
   }
 
@@ -154,35 +149,8 @@
     grid-template-rows: minmax(0, 1fr) auto;
     padding: 0.75rem 0.75rem 0;
     background: var(--panel-2);
-    border-radius: 2.875rem calc(var(--nose) + 3rem) 0.5rem 1rem / 2.875rem 74% 0.5rem 1rem;
+    border-radius: 2.875rem 2.875rem 1rem 1rem;
     box-shadow: 0 0 0 1px var(--line);
-  }
-
-  .hull .glass {
-    margin-right: var(--nose);
-  }
-
-  /* Frontscheibe: folgt der Dachkurve, dunkel wie der Fensterrahmen */
-  .screen {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    width: calc(var(--nose) + 0.4rem);
-    height: 37%;
-    background: var(--text);
-    border-radius: 0.6rem calc(var(--nose) + 1.5rem) 0.4rem 0.4rem / 0.6rem 100% 0.4rem 0.4rem;
-  }
-
-  /* Scheinwerfer unten an der Front, über dem roten Streifen */
-  .lamp {
-    position: absolute;
-    right: 1.5rem;
-    bottom: 4.9rem;
-    width: 1.5rem;
-    height: 0.5rem;
-    border-radius: 0.25rem;
-    background: #fff4b8;
-    box-shadow: 0 0 0.7rem 0.15rem rgba(255, 238, 150, 0.65);
   }
 
   /* Das Fenster: dunkler Rahmen, runde Ecken, die Karte füllt es ganz aus */
@@ -219,7 +187,7 @@
   .plate {
     display: flex;
     justify-content: space-between;
-    padding-inline: 0.5rem var(--nose);
+    padding-inline: 0.5rem;
     font-size: 0.74rem;
     font-weight: 700;
     letter-spacing: 0.1em;
@@ -264,7 +232,7 @@
   }
 
   .bogie:last-child {
-    right: calc(var(--nose, 7rem) + 6%);
+    right: 8%;
   }
 
   .bogie i {
@@ -324,19 +292,9 @@
       display: none;
     }
 
-    /* Handy: der Wagen steht hochkant, eine seitliche Nase passt dort nicht, er bleibt ein abgerundeter Waggon */
-    .car {
-      --nose: 0rem;
-    }
-
     .hull {
       border-radius: 2rem 2rem 0.875rem 0.875rem;
       padding: 0.5625rem 0.5625rem 0;
-    }
-
-    .screen,
-    .lamp {
-      display: none;
     }
 
     .glass {
