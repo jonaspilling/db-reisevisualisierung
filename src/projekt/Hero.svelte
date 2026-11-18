@@ -117,7 +117,7 @@
         <span class="w" style="--i:1"><span class="wi">bin</span></span>
         <span class="w num" style="--i:2"><span class="wi"><Odometer value={km} digits={4} label="{target} " /></span></span>
         <span class="w" style="--i:3"><span class="wi">Kilometer</span></span>
-        <span class="w" style="--i:4"><span class="wi">Zug</span></span>
+        <span class="w" style="--i:4"><span class="wi special">Zug</span></span>
         <span class="w" style="--i:5"><span class="wi">gefahren.</span></span>
       </h1>
 
@@ -172,6 +172,13 @@
 
   .hero :global(.say) {
     font-size: clamp(2.4rem, 5.2vw, 5.6rem);
+  }
+
+  /* Die Sonderschrift ist sehr speziell: nur dieses eine Wort */
+  .hero :global(.special) {
+    font-family: var(--special);
+    font-weight: 700;
+    letter-spacing: 0.01em;
   }
 
   .num {

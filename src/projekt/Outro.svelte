@@ -13,7 +13,7 @@
 
 <section class="outro t-red" aria-labelledby="outro">
   <div class="inner">
-    <h2 id="outro" class="say" use:reveal>Jetzt die Karte.</h2>
+    <h2 id="outro" class="say" use:reveal>Jetzt die <span class="special">Karte</span>.</h2>
     <p class="sub" use:reveal={120}>
       Alle {story.trips.length} Fahrten zum Anklicken, mit Zeitleiste zum Abspielen und in 3D.
     </p>
@@ -25,6 +25,13 @@
 </section>
 
 <style>
+  /* Die Sonderschrift ist sehr speziell: nur dieses eine Wort */
+  .special {
+    font-family: var(--special);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
   .outro {
     position: relative;
     background: var(--s-bg);
