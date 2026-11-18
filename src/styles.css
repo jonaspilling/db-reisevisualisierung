@@ -12,7 +12,7 @@
   --on-red: #ffffff;
 
   /* Schrift: eine Familie, über Gewicht gegliedert */
-  --display: "Funnel Display", "Libre Franklin", "Franklin Gothic Medium", "Arial", system-ui, sans-serif;
+  --display: "Afacad Flux", "Libre Franklin", "Franklin Gothic Medium", "Arial", system-ui, sans-serif;
   /* Sonderschrift (Adobe Fonts, Kit mfc5rjo): joc, rund und sehr dick. Nur für einzelne Wörter und das Logo. Fehlt sie, greift die Überschriften-Schrift. */
   --special: "joc", var(--display);
   --sans: "Libre Franklin", "Franklin Gothic Medium", "Arial", system-ui, sans-serif;

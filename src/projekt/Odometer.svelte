@@ -53,7 +53,7 @@
     display: block;
     height: 1em;
     overflow: hidden;
-    min-width: 0.62em;
+    min-width: 0.52em;
     text-align: center;
   }
 

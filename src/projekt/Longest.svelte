@@ -361,7 +361,7 @@
     column-gap: clamp(1rem, 4vw, 4rem);
     background: #e7e9eb;
     color: #2a2d31;
-    font-family: "Source Sans 3", var(--sans);
+    font-family: var(--display);
   }
 
   .rj-copy {
@@ -371,12 +371,12 @@
   }
 
   .rj-say {
-    font-family: "Source Sans 3", var(--display);
-    font-weight: 700;
+    /* Wie alle Überschriften der Seite (früher in der Schrift der ÖBB) */
+    font-family: var(--display);
+    font-weight: 800;
     font-size: clamp(2rem, 4.6vw, 4.4rem);
-    line-height: 1;
-    letter-spacing: -0.01em;
-    text-transform: uppercase;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
   }
 
   .ticket {
