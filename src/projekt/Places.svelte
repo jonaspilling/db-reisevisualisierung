@@ -17,7 +17,7 @@
   <div class="sc-stage">
     <h2 class="say wide">
       <span class="w" style="--i:0"><span class="wi hl">{story.stations.length}</span></span>
-      <Words text="Bahnhöfe in" from={1} />
+      <Words text="*Bahnhöfe in" from={1} />
       <span class="w" style="--i:3"><span class="wi hl">{countryCount}</span></span>
       <Words text={countryCount === 1 ? "*Land." : "*Ländern."} from={4} />
     </h2>

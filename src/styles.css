@@ -15,9 +15,9 @@
   --display: "Afacad Flux", "Libre Franklin", "Franklin Gothic Medium", "Arial", system-ui, sans-serif;
   /* Sonderschrift (Adobe Fonts, Kit mfc5rjo): joc, rund und sehr dick. Nur für einzelne Wörter und das Logo. Fehlt sie, greift die Überschriften-Schrift. */
   --special: "joc", var(--display);
-  /* Akzentwort-Schrift (Adobe Fonts): parliament, eine Fraktur-artige Schrift, ca. ein Wort pro Überschrift */
-  --accent: "parliament", var(--display);
-  --sans: "Spline Sans Mono", ui-monospace, "Cascadia Mono", "Consolas", monospace;
+  /* Akzentwort-Schrift: joc (Adobe Fonts), rund und sehr dick, für einzelne Wörter in Überschriften */
+  --accent: var(--special);
+  --sans: "Libre Franklin", "Franklin Gothic Medium", "Arial", system-ui, sans-serif;
 
   /* Bewegung: kräftiges Ease-out, damit Reaktionen sofort spürbar sind */
   /* Rundungen: weich, aber nicht pillenförmig */

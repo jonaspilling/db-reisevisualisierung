@@ -50,7 +50,7 @@
 
 <div class="container">
   <div class="page-head split">
-    <h1>Das Jahr in <span class="hl">Zahlen</span></h1>
+    <h1>Das Jahr in <span class="hl special">Zahlen</span></h1>
     <p class="lead">
       {trips.length} Fahrten im Überblick: Strecke, Zeit, Lieblingsorte und wann ich unterwegs war.
     </p>
@@ -123,7 +123,7 @@
     </section>
 
     <section class="panel third">
-      <h2>Lieblingsstrecken</h2>
+      <h2><span class="special">Lieblings</span>strecken</h2>
       <!-- Beide Bahnhöfe stehen ausgeschrieben untereinander, darunter der Balken über die ganze Breite -->
       <ul class="routes">
         {#each routes as r}
