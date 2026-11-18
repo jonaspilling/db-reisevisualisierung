@@ -8,7 +8,7 @@
   import { formatDuration } from "../lib/data.js";
   import { projectTrips } from "../lib/project.js";
   import { AUTOBAHN_KMH, nf, tripLegs } from "../lib/story.js";
-  import { measure, drawn } from "../lib/dash.js";
+  import { measure, dashOff, dashVis } from "../lib/dash.js";
   import Odometer from "./Odometer.svelte";
 
   let { story } = $props();
@@ -155,7 +155,9 @@
           use:measure
           d={l.d}
           class="run"
-          style="stroke:{COLOR[l.op] || 'var(--red)'};{drawn(clamp((fA - l.s) / Math.max(l.e - l.s, 1e-6)))}"
+          style:stroke={COLOR[l.op] || "var(--red)"}
+          style:stroke-dashoffset={dashOff(clamp((fA - l.s) / Math.max(l.e - l.s, 1e-6)))}
+          style:stroke-opacity={dashVis(clamp((fA - l.s) / Math.max(l.e - l.s, 1e-6)))}
         />
       {/each}
       <g class="end">
@@ -211,7 +213,7 @@
         <svg class="rj-path" viewBox={netB.viewBox} role="img" aria-label="Die Railjet-Fahrt als Linie" preserveAspectRatio="xMidYMid meet">
           <path d={dB} class="rj-ghost" stroke-width={3 * rjScale} />
           <path bind:this={elB} d={dB} class="measure" />
-          <path use:measure d={dB} class="rj-run" style={drawn(fB)} stroke-width={5 * rjScale} />
+          <path use:measure d={dB} class="rj-run" style:stroke-dashoffset={dashOff(fB)} style:stroke-opacity={dashVis(fB)} stroke-width={5 * rjScale} />
           {#if headB}
             <circle cx={headB.x} cy={headB.y} r={8 * rjScale} class="rj-head" stroke-width={4 * rjScale} />
           {/if}
@@ -312,6 +314,7 @@
   }
 
   .run {
+    stroke-dasharray: calc(var(--len, 99999) * 1px);
     stroke-width: 5;
   }
 
@@ -500,6 +503,7 @@
   }
 
   .rj-run {
+    stroke-dasharray: calc(var(--len, 99999) * 1px);
     stroke: #d5001c;
   }
 

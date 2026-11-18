@@ -114,14 +114,16 @@
     </button>
   </div>
 
-  <!-- Die Schiene: dünne Linie über die ganze Breite, ein kleiner roter Zug fährt mit dem Scrollen mit -->
-  {#if !onMap}
-    <div class="rail" aria-hidden="true" style="--prog:{prog}">
-      <i class="done"></i>
-      <i class="train"></i>
-    </div>
-  {/if}
 </header>
+
+<!-- Die Schiene: dünne Linie über die ganze Breite, ein kleiner roter Zug fährt mit dem Scrollen mit.
+   Sie liegt außerhalb der Leiste und bleibt oben stehen, wenn die Leiste ausgeblendet wird: so sieht man immer, wie weit man ist. -->
+{#if !onMap}
+  <div class="rail" class:up={hidden} aria-hidden="true" style="--prog:{prog}">
+    <i class="done"></i>
+    <i class="train"></i>
+  </div>
+{/if}
 
 <style>
   /* Kein fester Balken: Glasstücke schweben über dem Inhalt, die Leiste braucht keinen Platz */
@@ -300,14 +302,22 @@
 
   /* Die Schiene unter der Leiste */
   .rail {
-    position: absolute;
+    position: fixed;
+    z-index: 3000;
     left: var(--pad);
     right: var(--pad);
     top: 4.15rem;
     height: 0.1875rem;
     border-radius: 0.125rem;
-    background: rgba(40, 45, 55, 0.14);
-    transition: opacity 300ms var(--ease);
+    background: rgba(128, 134, 148, 0.38);
+    pointer-events: none;
+    will-change: transform;
+    transition: transform 360ms cubic-bezier(0.32, 0.72, 0.24, 1);
+  }
+
+  /* Leiste weg: die Schiene rutscht an den oberen Rand und bleibt */
+  .rail.up {
+    transform: translate3d(0, -3.75rem, 0);
   }
 
   .rail i {
@@ -381,6 +391,10 @@
 
     .rail {
       top: 3.55rem;
+    }
+
+    .rail.up {
+      transform: translate3d(0, -3.15rem, 0);
     }
 
     .header.hidden {

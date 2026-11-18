@@ -2,7 +2,7 @@
   import { scene } from "../lib/scenes.js";
   import { shortName } from "../lib/facts.js";
   import { endpointNames } from "../lib/story.js";
-  import { measure, drawn } from "../lib/dash.js";
+  import { measure, dashOff, dashVis } from "../lib/dash.js";
   import Odometer from "./Odometer.svelte";
 
   let { story } = $props();
@@ -102,7 +102,8 @@
           d={dd}
           class="trip"
           class:now={j === cur && frac(j) > 0 && frac(j) < 1}
-          style={drawn(frac(j))}
+          style:stroke-dashoffset={dashOff(frac(j))}
+          style:stroke-opacity={dashVis(frac(j))}
         />
       {/each}
 
@@ -198,6 +199,7 @@
   }
 
   .trip {
+    stroke-dasharray: calc(var(--len, 99999) * 1px);
     stroke: var(--red);
     stroke-opacity: 0.3;
     stroke-width: 2.4;
