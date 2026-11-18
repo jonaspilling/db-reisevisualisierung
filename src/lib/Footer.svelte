@@ -1,3 +1,20 @@
+<script>
+  import { router, isHomePath } from "./router.svelte.js";
+  import { goTo } from "./jump.js";
+
+  // "Projekt" in der Fußzeile bringt immer ganz nach oben: auf der Startseite gleitet die Seite hoch,
+  // von Statistik oder Erklärung geht es zur Startseite und dort an den Anfang (nicht an die letzte Stelle).
+  function toTop(e) {
+    e.preventDefault();
+    if (isHomePath(router.path)) {
+      goTo(0);
+      return;
+    }
+    location.hash = "#/";
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "instant" }), 60);
+  }
+</script>
+
 <footer class="footer" id="info">
   <div class="container">
     <div class="cols">
@@ -19,7 +36,7 @@
         <h4>Seiten</h4>
         <ul>
           <li><a href="#/karte">Karte</a></li>
-          <li><a href="#/">Projekt</a></li>
+          <li><a href="#/" onclick={toTop}>Projekt</a></li>
           <li><a href="#/statistik">Statistik</a></li>
           <li><a href="#/ueber">So liest du die Karte</a></li>
         </ul>
