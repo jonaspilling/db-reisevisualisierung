@@ -20,7 +20,7 @@
   <div class="container">
     <div class="cols">
       <div class="about">
-        <p class="brand"><Logo size={44} />Bord<b>bistro</b></p>
+        <p class="brand"><Logo size={44} /><span>Bord<b>bistro</b></span></p>
         <p>
           Eine Visualisierung meiner Bahnreisen 2026: 16 Fernverkehrsfahrten, nachgezeichnet auf dem echten Gleisnetz
           und als scrollbare Geschichte erzählt. Uni-Projekt im Fach Information Design, 3. Semester.
