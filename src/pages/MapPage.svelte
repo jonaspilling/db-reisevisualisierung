@@ -832,13 +832,21 @@
   }
 
   // Bei gekippter Karte ist fitBounds zu vorsichtig, deshalb wird der Ausschnitt etwas näher herangeholt.
+  // Die Quellenangabe startet eingeklappt: nur der i-Knopf in der Ecke, ein Klick klappt sie auf
+  function collapseAttrib() {
+    const el = mapEl?.querySelector(".maplibregl-ctrl-attrib");
+    if (!el) return;
+    el.removeAttribute("open");
+    el.classList.remove("maplibregl-compact-show");
+  }
+
   function frame(duration) {
     if (!tripsEng.length || !map) return;
     const pitch = is3D ? PITCH_3D : 0;
     const bearing = is3D ? BEARING_3D : 0;
     const cam = map.cameraForBounds(boundsOf(tripsEng.map((x) => x.path)), { padding: padding(), maxZoom: 9, pitch, bearing });
     if (!cam) return;
-    baseZoom = Math.min(9, cam.zoom + (is3D && stageW > 640 ? 0.4 : 0));
+    baseZoom = Math.min(9, cam.zoom + (is3D && stageW > 640 ? 0.4 : 0) + (bare ? 0.35 : 0));
     map.easeTo({
       center: cam.center,
       zoom: baseZoom,
@@ -955,7 +963,7 @@
       lastFollow = ts;
       map.easeTo({
         center: headFC.features[0].geometry.coordinates,
-        zoom: baseZoom + 1.9,
+        zoom: baseZoom + 2.1,
         duration: 900,
         easing: (t) => t,
         essential: true,
@@ -1387,6 +1395,7 @@
         /* Beleuchtung ist optional */
       }
       loaded = true;
+      collapseAttrib();
       applyMode();
       applyWall();
       rebuildGeometry();
@@ -3159,9 +3168,6 @@
       right: 0.8rem;
     }
 
-    :global(.page-map.full .maplibregl-ctrl-attrib) {
-      font-size: 0.6rem;
-    }
   }
 
   /* ---- Bahnhofsnamen, die beim Abspielen aufpoppen (werden von MapLibre-Markern getragen) ---- */
@@ -3220,16 +3226,33 @@
     font-family: var(--sans);
   }
 
+  /* Quellenangabe: standardmäßig nur der kleine i-Knopf, bündig in der Ecke; Klick klappt den Text auf */
   :global(.page-map .maplibregl-ctrl-bottom-right) {
     bottom: 8.4rem;
+    right: 0.5rem;
   }
 
-  :global(.page-map .maplibregl-ctrl-attrib),
-  :global(.page-map .maplibregl-ctrl-attrib.maplibregl-compact) {
-    background: #ffffff;
-    font-size: 0.74rem;
+  :global(.page-map .maplibregl-ctrl-attrib.maplibregl-compact),
+  :global(.page-map .maplibregl-ctrl-attrib.maplibregl-compact-show) {
+    margin: 0;
+    font-size: 0.72rem;
     color: var(--muted);
-    border-radius: 0.5rem;
+  }
+
+  :global(.page-map .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show)) {
+    background: none;
+    box-shadow: none;
+  }
+
+  :global(.page-map .maplibregl-ctrl-attrib.maplibregl-compact-show) {
+    background: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 0 0 1px rgba(40, 45, 55, 0.1), 0 0.5rem 1.25rem -0.5rem rgba(40, 45, 55, 0.4);
+  }
+
+  :global(.page-map .maplibregl-ctrl-attrib-button) {
+    background-color: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 0 0 1px rgba(40, 45, 55, 0.12);
   }
 
   :global(.page-map .maplibregl-ctrl-attrib a) {
@@ -3245,11 +3268,12 @@
 
   :global(.page-map.bare .maplibregl-ctrl-bottom-right) {
     bottom: 0.3rem;
+    right: 0.3rem;
   }
 
   :global(.page-map.bare .maplibregl-ctrl-attrib) {
-    font-size: 0.58rem;
-    line-height: 1.2;
+    font-size: 0.62rem;
+    line-height: 1.25;
   }
 
   /* Touchgeräte zoomen mit zwei Fingern: die Plus/Minus-Knöpfe nehmen nur Platz weg, der Kompass bleibt */

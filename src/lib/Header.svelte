@@ -21,6 +21,19 @@
   });
   let prog = $state(0);
   // "Info" fliegt ans Seitenende zu Projektbeschreibung und Kontakt (zurück nach oben geht es über das Logo)
+  // Logo: die Seite wird ganz neu geladen und beginnt wieder ganz oben im Projekt (wie ein frischer Besuch)
+  function restart(e) {
+    e.preventDefault();
+    try {
+      history.scrollRestoration = "manual";
+    } catch {
+      /* ältere Browser */
+    }
+    history.replaceState(null, "", "#/");
+    window.scrollTo(0, 0);
+    location.reload();
+  }
+
   function infoClick() {
     if (document.getElementById("info")) return jumpToInfo();
     // Kartenseite: erst zur Startseite, dann ans Ende fliegen
@@ -83,7 +96,7 @@
   <div class="veil" aria-hidden="true"></div>
 
   <div class="bar">
-    <a class="brand glass" href="#/" onclick={(e) => go(e, "top")} aria-label="{BRAND.name} {BRAND.suffix}: zum Anfang">
+    <a class="brand glass" href="#/" onclick={restart} aria-label="{BRAND.name} {BRAND.suffix}: zum Anfang">
       <span class="name">{BRAND.name}<b>{BRAND.suffix}</b></span>
     </a>
 

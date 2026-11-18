@@ -167,6 +167,9 @@
     position: fixed;
     inset: 0;
     width: 100%;
+    /* weit nach links aus dem Bild geschoben (Größe bleibt gleich): so bleibt auch nichts Kleines davon stehen,
+       etwa die Quellenangabe der Karte, die sonst über der Startseite klebte */
+    transform: translate3d(-150%, 0, 0);
     visibility: hidden;
     pointer-events: none;
     animation: none;
