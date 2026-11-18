@@ -15,6 +15,10 @@
   const index = $derived(onMap ? 0 : 1);
 
   let hidden = $state(false);
+  // Auf der Kartenseite wird nicht gescrollt: die Leiste ist immer da
+  $effect(() => {
+    if (onMap) hidden = false;
+  });
   let prog = $state(0);
 
   // Auf der Startseite wird gescrollt statt neu geladen
@@ -33,18 +37,31 @@
   // Beim Runterscrollen verschwindet die Leiste, beim Hochscrollen kommt sie sofort zurück.
   // Die Schiene darunter zeigt, wie weit man auf der Seite ist.
   onMount(() => {
-    let last = window.scrollY;
+    // Mit Puffer: erst nach rund 30 Pixeln in eine Richtung wechselt die Leiste. Kleine Sprünge der Scroll-Position
+    // (Layout, Adressleiste auf dem Handy) lassen sie so nicht flackern.
+    let anchor = window.scrollY;
     let raf = 0;
     const update = () => {
       raf = 0;
       const y = window.scrollY;
       const max = document.documentElement.scrollHeight - window.innerHeight;
       prog = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0;
-      const dy = y - last;
-      if (onMap || y < 90) hidden = false;
-      else if (dy > 8) hidden = true;
-      else if (dy < -8) hidden = false;
-      if (Math.abs(dy) > 8) last = y;
+      if (onMap || y < 90) {
+        hidden = false;
+        anchor = y;
+      } else if (hidden) {
+        if (y > anchor) anchor = y;
+        else if (anchor - y > 30) {
+          hidden = false;
+          anchor = y;
+        }
+      } else {
+        if (y < anchor) anchor = y;
+        else if (y - anchor > 30) {
+          hidden = true;
+          anchor = y;
+        }
+      }
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
@@ -97,12 +114,13 @@
     z-index: 3000;
     height: 0;
     pointer-events: none;
-    transition: transform 520ms var(--ease);
-    animation: drop 700ms var(--ease) both;
+    /* Nur Transform wird animiert, auf eigener Ebene: das Ausblenden bleibt flüssig, auch beim Scrollen */
+    will-change: transform;
+    transition: transform 360ms cubic-bezier(0.32, 0.72, 0.24, 1);
   }
 
   .header.hidden {
-    transform: translateY(-5.5rem);
+    transform: translate3d(0, -5.5rem, 0);
   }
 
   @keyframes drop {
@@ -117,8 +135,8 @@
     position: absolute;
     inset: 0 0 auto 0;
     height: 5.75rem;
-    backdrop-filter: blur(14px) saturate(1.25);
-    -webkit-backdrop-filter: blur(14px) saturate(1.25);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     mask-image: linear-gradient(to bottom, #000 0%, #000 38%, transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 38%, transparent 100%);
     background: linear-gradient(to bottom, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0));
@@ -135,14 +153,15 @@
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: 0.75rem var(--pad) 0;
+    animation: drop 700ms var(--ease) backwards;
   }
 
   /* Glas: durchscheinend, mit feiner heller Kante oben und weichem Schatten */
   .glass {
     pointer-events: auto;
     background: rgba(255, 255, 255, 0.62);
-    backdrop-filter: blur(18px) saturate(1.6);
-    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.85),
       inset 0 0 0 1px rgba(255, 255, 255, 0.35),
@@ -328,7 +347,7 @@
     }
 
     .header.hidden {
-      transform: translateY(-5rem);
+      transform: translate3d(0, -5rem, 0);
     }
   }
 
@@ -349,8 +368,11 @@
 
   @media (prefers-reduced-motion: reduce) {
     .header {
-      animation: none;
       transition: none;
+    }
+
+    .bar {
+      animation: none;
     }
 
     .thumb {

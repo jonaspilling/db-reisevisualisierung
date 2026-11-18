@@ -39,8 +39,11 @@ export function initRouter() {
   if (canVT) document.documentElement.classList.add("has-vt");
 
   const onChange = () => {
-    // Zwischen Karte und Projekt wird nur gescrollt: keine neue Seite, keine Überblendung
-    const stayHome = isHomePath(router.path) && isHomePath(location.hash.replace(/^#/, "").split("?")[0] || "/");
+    // Projekt und Karte bleiben beide aufgebaut: dazwischen gibt es keine Überblendung des ganzen Bildschirms
+    // (das ist bei der WebGL-Karte teuer und ruckelt), die neue Seite blendet selbst weich ein.
+    const next = location.hash.replace(/^#/, "").split("?")[0] || "/";
+    const persistent = (p) => isHomePath(p) || p === "/karte";
+    const stayHome = persistent(router.path) && persistent(next);
     const apply = async () => {
       parse();
       await tick();

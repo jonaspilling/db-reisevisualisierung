@@ -27,6 +27,17 @@
     if (pageKey in visited) visited[pageKey] = true;
   });
 
+  // Am Rechner wird die Kartenseite im Hintergrund vorbereitet, sobald die Startseite steht und der Browser Pause hat:
+  // der erste Wechsel zur Karte ist dann sofort da statt einer leeren Seite, bis sich die Karte aufgebaut hat.
+  // Auf dem Handy bleibt es beim Aufbau beim ersten Besuch (zwei WebGL-Karten gleichzeitig wären dort zu viel).
+  $effect(() => {
+    if (!data || phoneUi) return;
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 4000));
+    const cancel = window.cancelIdleCallback || clearTimeout;
+    const id = idle(() => (visited["/karte"] = true), { timeout: 7000 });
+    return () => cancel(id);
+  });
+
   // Scroll-Position der Startseite merken und beim Zurückkommen wiederherstellen
   let homeY = 0;
   onMount(() => {
@@ -77,7 +88,7 @@
   {/if}
   {#if visited["/karte"] || pageKey === "/karte"}
     <div class="page full" class:off={pageKey !== "/karte"}>
-      <MapPage full trips={data.trips} stations={data.stations} />
+      <MapPage full active={pageKey === "/karte"} trips={data.trips} stations={data.stations} />
     </div>
   {/if}
   {#if pageKey === "/statistik" || pageKey === "/ueber"}
@@ -149,6 +160,18 @@
   /* Ausgeblendete Seite bleibt im Speicher, nimmt aber keinen Platz und kostet nichts */
   .page.off {
     display: none;
+  }
+
+  /* Die Karte behält ihre Größe auch im Hintergrund (nur unsichtbar und aus dem Fluss genommen): beim Zurückkommen
+     muss sie sich nicht neu einmessen und einpassen, sie ist sofort da */
+  .page.full.off {
+    display: block;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    visibility: hidden;
+    pointer-events: none;
+    animation: none;
   }
 
   /* Eigene Seiten bleiben unter der schwebenden Menü-Pille; die Startseite läuft bis ganz nach oben */

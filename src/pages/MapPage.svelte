@@ -8,7 +8,7 @@
   import { shortName } from "../lib/facts.js";
 
   // full: die Kartenseite (ganzer Bildschirm). Sonst steckt die Karte in einem Fenster der Startseite.
-  let { trips, stations, full = false, bare = false } = $props();
+  let { trips, stations, full = false, bare = false, active = true } = $props();
 
   // ---- Einstellungen ----------------------------------------------------
   const STYLE_URL = "https://tiles.openfreemap.org/styles/positron"; // freie Vektorkarte, kein Schlüssel nötig
@@ -68,6 +68,13 @@
   let hoverCell = null;
   let clearTimer = 0;
   let visible = true;
+  // Die Kartenseite bleibt nach dem ersten Besuch im Speicher: ist sie nicht die aktive Seite, ruht alles
+  let isActive = true;
+  let syncNow = null;
+  $effect(() => {
+    isActive = active;
+    syncNow?.();
+  });
   let autoPending = false;
   let autoTimer = 0;
   let fullyIn = false; // Handy: die Karte ist (fast) ganz im Bild
@@ -132,7 +139,8 @@
 
   const fraction = $derived(totalUState > 0 ? u / totalUState : 0);
   const atEnd = $derived(u >= totalUState - 1e-6);
-  const nowTime = $derived(realAt(u));
+  // totalUState mitlesen: sobald die Strecken aufgebaut sind, wird das Datum neu berechnet (sonst bliebe "heute" stehen)
+  const nowTime = $derived((totalUState, realAt(u)));
   const dateLabel = $derived(
     new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric" }).format(nowTime)
   );
@@ -1514,11 +1522,12 @@
     let inView = true;
     const syncVisible = () => {
       const was = visible;
-      visible = docVisible && inView;
+      visible = docVisible && inView && isActive;
       // Wieder im Bild: den Stand nachholen, der in der Zwischenzeit ausgesetzt wurde
       if (visible && !was && map && loaded) applyU(u);
       if (visible && !was) maybeAutoplay();
     };
+    syncNow = syncVisible;
     const onVis = () => {
       docVisible = !document.hidden;
       syncVisible();
@@ -3027,8 +3036,8 @@
 
   @container mapwin (min-width: 900px) {
     .side {
-      top: 1rem;
-      max-height: calc(100% - 12.6rem);
+      top: 4.6rem;
+      max-height: calc(100% - 16.2rem);
     }
   }
 
@@ -3036,6 +3045,7 @@
      Zoom, zuletzt die Zeitleiste. Die Seite bleibt im Speicher und wird nur eingeblendet; jedes Einblenden startet
      diese Animationen neu. "translate" statt "transform", damit die zentrierte Zeitleiste ihre Verschiebung behält. */
   .full .left {
+    top: 4.6rem; /* unter der Glas-Leiste mit Marke, Schalter und Info */
     animation: ui-in 560ms var(--ease) 140ms both;
     --dx: -1.25rem;
   }
@@ -3088,7 +3098,7 @@
     }
 
     .side:not(.open) {
-      top: 0.8rem;
+      top: 4.4rem;
     }
 
     .side-fab {

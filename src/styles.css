@@ -191,6 +191,21 @@ html.has-vt .page {
   animation: none;
 }
 
+/* Projekt und Karte bleiben im Speicher: beim Wechsel blendet die neue Seite nur ein (nur Deckkraft, die Karte
+   wird nicht verschoben und die Ebene bleibt auf der Grafikkarte) */
+.page.home,
+.page.full,
+html.has-vt .page.home,
+html.has-vt .page.full {
+  animation: page-fade 380ms var(--ease) both;
+}
+
+@keyframes page-fade {
+  from {
+    opacity: 0;
+  }
+}
+
 @keyframes page-in {
   from {
     opacity: 0;
