@@ -33,6 +33,8 @@
   onMount(() => {
     const paths = [...svgEl.querySelectorAll(".base")];
     const trains = [...svgEl.querySelectorAll(".train")];
+    const wheels = trains.map((t) => [...t.parentNode.querySelectorAll(".wheel")]);
+    const showWheels = (i, on) => wheels[i].forEach((w) => (w.style.visibility = on ? "visible" : "hidden"));
     const lens = paths.map((p) => p.getTotalLength());
     paths.forEach((p, i) => p.style.setProperty("--len", lens[i].toFixed(2)));
     ready = true;
@@ -42,7 +44,7 @@
     // Fast gleichmäßig, nur am Anfang und Ende etwas weicher
     const ease = (x) => x + 0.08 * Math.sin(2 * Math.PI * x) * -0.5;
     const SAMPLES = 5;
-    const TRAIN = 20; // Länge eines Zuges in Zeichnungseinheiten
+    const TRAIN = 26; // Länge eines Zuges in Zeichnungseinheiten
     let raf = 0;
     let on = true;
     const frame = (now) => {
@@ -59,6 +61,7 @@
         const u = (t % dur) / run;
         if (u > 1) {
           el.setAttribute("d", "");
+          showWheels(i, false);
           return;
         }
         const s = ease(u) * (1 + size);
@@ -66,6 +69,7 @@
         const b = Math.min(1, s);
         if (b - a < 0.002) {
           el.setAttribute("d", "");
+          showWheels(i, false);
           return;
         }
         let d = "";
@@ -74,6 +78,14 @@
           d += (k ? "L" : "M") + pt.x.toFixed(1) + " " + pt.y.toFixed(1);
         }
         el.setAttribute("d", d);
+        // Je ein Rad an den beiden Enden des Wagens
+        const pa = paths[i].getPointAtLength(a * len);
+        const pb = paths[i].getPointAtLength(b * len);
+        wheels[i][0].setAttribute("cx", pa.x.toFixed(1));
+        wheels[i][0].setAttribute("cy", pa.y.toFixed(1));
+        wheels[i][1].setAttribute("cx", pb.x.toFixed(1));
+        wheels[i][1].setAttribute("cy", pb.y.toFixed(1));
+        showWheels(i, true);
       });
       raf = requestAnimationFrame(frame);
     };
@@ -140,7 +152,7 @@
           <path {d} class="base" style="--i:{i}" />
         {/each}
         {#each net.paths as d, i}
-          <path class="train" d="" />
+          <g class="tr"><path class="train" d="" /><circle class="wheel" r="3.2" /><circle class="wheel" r="3.2" /></g>
         {/each}
         {#each places as pl}
           <g transform="translate({pl.x} {pl.y})" class="place">
@@ -319,8 +331,16 @@
   /* ... danach fährt auf jeder ein kurzer roter Zug von Anfang bis Ende, immer wieder (Bewegung in Script) */
   .train {
     stroke: var(--red);
-    stroke-width: 4.2;
+    stroke-width: 4.6;
     stroke-linecap: butt;
+  }
+
+  /* Zwei Räder an den Enden: weiß mit rotem Rand, damit der Wagen wie ein Zug wirkt */
+  .wheel {
+    fill: #fff;
+    stroke: var(--red);
+    stroke-width: 1.8;
+    visibility: hidden;
   }
 
   .place circle {
@@ -341,6 +361,13 @@
       row-gap: 1.25rem;
     }
 
+    /* Auf dem Handy ist die ganze Startseite dunkel wie die Animation, die Schrift hell darauf */
+    .hero {
+      --s-bg: #1a1e26;
+      --s-fg: #ffffff;
+      --s-mute: #b9bfca;
+    }
+
     .copy {
       max-width: none;
     }
@@ -355,13 +382,17 @@
 
     .skip {
       margin-left: 0;
+      color: var(--s-mute);
+      text-decoration-color: rgba(255, 255, 255, 0.35);
     }
 
     /* Auf dem Handy liegt der Hintergrund unter der Überschrift */
     .backdrop {
       position: relative;
       width: auto;
-      border-radius: var(--r-lg);
+      margin-inline: calc(var(--pad) * -1);
+      background: transparent;
+      border-radius: 0;
       min-height: 0;
     }
   }
