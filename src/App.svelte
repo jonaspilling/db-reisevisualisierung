@@ -5,6 +5,7 @@
   import Header from "./lib/Header.svelte";
   import Footer from "./lib/Footer.svelte";
   import JumpDown from "./lib/JumpDown.svelte";
+  import InfoSheet from "./lib/InfoSheet.svelte";
   import { isPhone } from "./lib/scenes.js";
   import StatsPage from "./pages/StatsPage.svelte";
   import AboutPage from "./pages/AboutPage.svelte";
@@ -69,6 +70,7 @@
 </script>
 
 <Header path={router.path} />
+<InfoSheet />
 
 {#if error}
   <div class="state">

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import { isHomePath, goSection } from "./router.svelte.js";
-  import { jumpToInfo } from "./jump.js";
+  import { ui } from "./ui.svelte.js";
 
   let { path } = $props();
 
@@ -26,12 +26,6 @@
     if (!home) return;
     e.preventDefault();
     goSection(section);
-  }
-
-  function info(e) {
-    if (!home) return; // sonst normaler Link zur Erklärungsseite
-    e.preventDefault();
-    jumpToInfo();
   }
 
   // Beim Runterscrollen verschwindet die Leiste, beim Hochscrollen kommt sie sofort zurück.
@@ -92,7 +86,10 @@
       <a href="#/" onclick={(e) => go(e, "top")} class:on={index === 1} aria-current={index === 1 ? "page" : undefined}>Projekt</a>
     </nav>
 
-    <a class="info glass" href="#/ueber" onclick={info}>Info</a>
+    <button class="info glass" type="button" onclick={() => (ui.info = true)} aria-haspopup="dialog" aria-label="Info">
+      <span class="lbl">Info</span>
+      <svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 11v6m0-10v.01" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none" /></svg>
+    </button>
   </div>
 
   <!-- Die Schiene: dünne Linie über die ganze Breite, ein kleiner roter Zug fährt mit dem Scrollen mit -->
@@ -205,11 +202,17 @@
     height: 2.75rem;
     padding-inline: 1.1rem;
     border-radius: 62.4375rem;
-    text-decoration: none;
+    border: 0;
+    font-family: inherit;
+    cursor: pointer;
     font-weight: 700;
     font-size: 0.95rem;
     color: var(--text);
     transition: transform 160ms var(--ease), background-color 200ms var(--ease);
+  }
+
+  .info .ic {
+    display: none;
   }
 
   .info:hover {
@@ -309,13 +312,24 @@
 
   @media (max-width: 560px) {
     .bar {
-      grid-template-columns: auto 1fr;
+      grid-template-columns: auto 1fr auto;
       gap: 0.5rem;
       padding-top: 0.6rem;
     }
 
     .info {
+      width: 2.5rem;
+      height: 2.5rem;
+      padding: 0;
+      justify-content: center;
+    }
+
+    .info .lbl {
       display: none;
+    }
+
+    .info .ic {
+      display: block;
     }
 
     .brand {
