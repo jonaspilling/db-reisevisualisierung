@@ -3504,17 +3504,18 @@
     }
   }
 
-  /* Schmal (Handy): Leiste oben und Zeitleiste unten bilden den Rahmen, Legende und Optionen schweben im Fenster */
+  /* Schmal (Handy): Leiste oben und Zeitleiste unten bilden den Rahmen, Legende und Optionen schweben im Fenster,
+     mit Abstand zum Fensterrand, damit nichts an den Ecken abgeschnitten wirkt */
   @container mapwin (max-width: 899px) {
     .full .stage::after {
-      inset: 3.9rem 0.5rem 8.8rem 0.5rem;
+      inset: 3.9rem 0.5rem 8.4rem 0.5rem;
       border-radius: 1.1rem;
     }
 
     .full .left {
       right: auto;
-      left: 0.8rem;
-      top: 4.4rem;
+      left: 1.1rem;
+      top: 4.7rem;
       width: 9.5rem;
       padding: 0;
       --dx: -1.25rem;
@@ -3526,42 +3527,61 @@
       padding: 0.5rem 0.65rem 0.55rem;
     }
 
-    .full .side {
-      top: 4.4rem;
-      right: 0.8rem;
+    /* Optionen: klarer Knopf mit Beschriftung statt nur einem Symbol */
+    .full .side:not(.open) {
+      top: 4.7rem;
+      right: 1.1rem;
       bottom: auto;
-      width: calc(100% - 1.6rem);
-      max-height: calc(100% - 15rem);
+      width: auto;
+      padding: 0;
+      background: none;
+      box-shadow: none;
+    }
+
+    .full .side-fab {
+      padding: 0.6rem 1rem 0.6rem 0.9rem;
+      border-radius: 62.4375rem;
+      box-shadow: 0 0 0 1px var(--line), 0 0.5rem 1rem -0.5rem rgba(40, 45, 55, 0.4);
+    }
+
+    .full .side-fab .lbl {
+      display: inline;
+    }
+
+    .full .side.open {
+      top: 4.7rem;
+      right: 0.9rem;
+      left: 0.9rem;
+      bottom: auto;
+      width: auto;
+      max-height: calc(100% - 13.4rem);
       padding: 0;
       background: var(--bg);
       border-radius: 1.125rem;
       box-shadow: 0 0 0 1px rgba(40, 45, 55, 0.06), 0 1.125rem 2.5rem -1.25rem rgba(40, 45, 55, 0.4);
     }
 
-    .full .side:not(.open) {
-      width: auto;
-      background: none;
-      box-shadow: none;
-    }
-
     .full .side-x {
       display: inline-flex;
     }
 
+    /* Zeitleiste: Datum, darunter die Zähler in einer Zeile, darunter Abspielen und Leiste */
     .full .dock {
       height: auto;
       display: grid;
-      gap: 0.15rem;
-      padding: 0.6rem 0.9rem 0.8rem;
+      gap: 0.1rem;
+      padding: 0.55rem 1rem 0.8rem;
       background: var(--frame);
     }
 
     .full .dock .readout {
-      display: flex;
+      display: grid;
+      gap: 0.2rem;
     }
 
     .full .dock .row {
       display: flex;
+      gap: 0.7rem;
     }
 
     .full .dock .date,
@@ -3573,31 +3593,61 @@
       min-width: 0;
     }
 
+    .full .dock .counters {
+      gap: 1rem;
+    }
+
+    .full .dock .counters span {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.3rem;
+    }
+
+    .full .dock .counters span:nth-child(3) {
+      display: none;
+    }
+
+    .full .dock .counters b {
+      font-size: 1rem;
+    }
+
+    .full .dock .months,
+    .full .dock .speeds {
+      display: none;
+    }
+
     .full .dock.muted .row {
       opacity: 0.5;
     }
 
     .full .dock.muted .transport,
-    .full .dock.muted .scrub,
-    .full .dock.muted .speeds {
+    .full .dock.muted .scrub {
       opacity: 1;
     }
 
     .full .detail {
-      left: 0.8rem;
-      top: 9.2rem;
+      left: 0.9rem;
+      right: 0.9rem;
+      width: auto;
+      top: 9.6rem;
       bottom: auto;
     }
 
+    /* Kompass: sichtbar auf eigenem Grund, mit Abstand zur Ecke */
     :global(.page-map.full .maplibregl-ctrl-top-right) {
       top: auto;
-      left: 0.8rem;
-      bottom: 9.4rem;
+      left: 1.1rem;
+      bottom: 9rem;
+    }
+
+    :global(.page-map.full .maplibregl-ctrl-group) {
+      background: var(--bg);
+      box-shadow: 0 0 0 1px var(--line);
     }
 
     :global(.page-map.full .maplibregl-ctrl-bottom-right) {
-      right: 0.8rem;
-      bottom: 9.4rem;
+      right: 1.1rem;
+      bottom: 9rem;
     }
   }
 </style>
