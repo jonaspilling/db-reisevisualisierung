@@ -118,7 +118,7 @@
 
 <!-- Die Schiene: dünne Linie über die ganze Breite, ein kleiner roter Zug fährt mit dem Scrollen mit.
    Sie liegt außerhalb der Leiste und bleibt oben stehen, wenn die Leiste ausgeblendet wird: so sieht man immer, wie weit man ist. -->
-{#if !onMap}
+{#if home}
   <div class="rail" class:up={hidden} aria-hidden="true" style="--prog:{prog}">
     <i class="done"></i>
     <i class="train"></i>

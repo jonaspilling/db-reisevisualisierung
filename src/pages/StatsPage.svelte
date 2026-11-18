@@ -123,12 +123,17 @@
 
     <section class="panel third">
       <h2>Lieblingsstrecken</h2>
-      <ul class="bars">
+      <!-- Beide Bahnhöfe stehen ausgeschrieben untereinander, darunter der Balken über die ganze Breite -->
+      <ul class="routes">
         {#each routes as r}
           <li>
-            <span class="name">{r.name}</span>
+            <span class="pair">
+              <span>{r.a}</span>
+              <span class="to" aria-hidden="true">⇄</span>
+              <span>{r.b}</span>
+            </span>
+            <b class="cnt">{r.n}×</b>
             <span class="bar"><i style="--w:{r.w}"></i></span>
-            <b>{r.n}×</b>
           </li>
         {/each}
       </ul>
@@ -308,6 +313,56 @@
 
   .bars b {
     text-align: right;
+  }
+
+  /* Lieblingsstrecken: Name in voller Länge (darf umbrechen), Anzahl rechts, Balken darunter */
+  .routes {
+    list-style: none;
+    margin-top: 1.2rem;
+    display: grid;
+    gap: 1.1rem;
+  }
+
+  .routes li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 0.4rem 0.9rem;
+  }
+
+  .routes .pair {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.5rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .routes .to {
+    color: var(--red);
+    font-weight: 800;
+  }
+
+  .routes .cnt {
+    font-size: 1.15rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .routes .bar {
+    grid-column: 1 / -1;
+    height: 0.5rem;
+    border-radius: var(--r);
+    background: var(--panel-2);
+    overflow: hidden;
+  }
+
+  .routes .bar i {
+    display: block;
+    height: 100%;
+    width: calc(var(--w) * 100%);
+    border-radius: var(--r);
+    background: var(--red);
   }
 
   /* Zuggattungen */

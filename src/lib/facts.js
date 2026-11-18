@@ -22,7 +22,7 @@ export function routeRanking(trips, limit = 5) {
   const map = new Map();
   for (const t of trips) {
     const key = [t.von, t.nach].sort().join("|");
-    const entry = map.get(key) || { name: `${shortName(t.von)} ⇄ ${shortName(t.nach)}`, n: 0 };
+    const entry = map.get(key) || { name: `${shortName(t.von)} ⇄ ${shortName(t.nach)}`, a: shortName(t.von), b: shortName(t.nach), n: 0 };
     entry.n++;
     map.set(key, entry);
   }
