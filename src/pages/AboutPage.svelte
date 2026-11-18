@@ -39,8 +39,8 @@
   );
 
   // ---------- 2. Die Spielwiese ----------
-  const net = projectTrips(trips, 30);
-  const N = trips.length;
+  const net = $derived(projectTrips(trips, 30));
+  const N = $derived(trips.length);
   let t = $state(0); // 0 .. N
   let playing = $state(false);
   let hovered = $state(-1);
@@ -195,6 +195,7 @@
               onpointerenter={() => (hovered = i)}
               onpointerleave={() => (hovered = -1)}
               onclick={() => (hovered = hovered === i ? -1 : i)}
+              onkeydown={(e) => (e.key === "Enter" || e.key === " ") && (hovered = hovered === i ? -1 : i)}
             />
           {/if}
         {/each}

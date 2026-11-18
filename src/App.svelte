@@ -9,7 +9,7 @@
   import StatsPage from "./pages/StatsPage.svelte";
   import AboutPage from "./pages/AboutPage.svelte";
   import HomePage from "./pages/HomePage.svelte";
-  import MapPage from "./pages/MapPage.svelte";
+  import MapPage from "./lib/LazyMapPage.svelte";
 
   // Handy: der schwebende Sprungknopf überdeckt Text, dort gibt es stattdessen den Link im Hero
   const phoneUi = isPhone();
