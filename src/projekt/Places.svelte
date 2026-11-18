@@ -13,7 +13,7 @@
   const countryCount = story.countries.length;
 </script>
 
-<section class="scene t-light" style="--dwell:1.2" data-ms="11000" use:scene>
+<section class="scene t-light" style="--dwell:1.2" data-ms="26000" use:scene>
   <div class="sc-stage">
     <h2 class="say wide">
       <span class="w" style="--i:0"><span class="wi hl">{story.stations.length}</span></span>
@@ -95,12 +95,12 @@
     color: var(--muted);
   }
 
-  /* Die Bänder laufen mit dem Scrollen: A nach links, B nach rechts */
+  /* Die Bänder laufen langsam mit dem Scrollen (am Handy mit der Zeit): A nach links, B nach rechts */
   .a .run {
-    transform: translateX(calc(var(--p, 0) * -42%));
+    transform: translateX(calc(var(--p, 0) * -22%));
   }
 
   .b .run {
-    transform: translateX(calc(-42% + var(--p, 0) * 42%));
+    transform: translateX(calc(-22% + var(--p, 0) * 22%));
   }
 </style>

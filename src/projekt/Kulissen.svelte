@@ -1,6 +1,5 @@
 <script>
   import { reveal } from "../lib/actions.js";
-  import { REGIONAL } from "../lib/regional.js";
 
   let { story } = $props();
 </script>
@@ -14,33 +13,24 @@
       <div use:reveal>
         <h3>Woher die Daten kommen</h3>
         <p>
-          Aus meiner persönlichen DB-Reisehistorie: Datum, Uhrzeit, Start, Ziel, Zugnummer und die wichtigsten
-          Zwischenhalte. {story.trips.length} Fahrten, alles zusammen als CSV-Datei im Projekt.
+          Aus meiner persönlichen DB-Reisehistorie: Datum, Uhrzeit, Start, Ziel, Zugnummer und alle Zwischenhalte.
+          {story.trips.length} Fahrten, alles zusammen als CSV-Datei im Projekt.
         </p>
       </div>
       <div use:reveal={100}>
         <h3>Wie die Linien entstehen</h3>
         <p>
-          Die Historie kennt nur Bahnhöfe, keine Gleise. Die Linien sind der kürzeste Weg entlang echter, in
-          OpenStreetMap kartierter Gleise, S-Bahn-Strecken werden gemieden.
+          Die Historie kennt nur Bahnhöfe, keine Gleise. Die Linien folgen deshalb echten, in OpenStreetMap
+          kartierten Zugverbindungen: der kürzeste Weg über die Gleise, die Fernzüge normalerweise befahren.
+          S-Bahn-Strecken werden gemieden. Im Einzelfall kann der tatsächlich gefahrene Weg abweichen.
         </p>
       </div>
       <div use:reveal={200}>
         <h3>Was die Karte nicht weiß</h3>
         <p>
-          Der tatsächlich gefahrene Weg kann abweichen, etwa bei Umleitungen. Alle Zahlen dieser Seite sind daraus
-          berechnet und deshalb Näherungen.
-        </p>
-        <!-- Was in den Daten fehlt: Regionalverkehr von Arverio, mit den beiden Farben seiner Auftritte -->
-        <p class="gap">
-          <span class="duo" aria-hidden="true"></span>
-          <span>
-            Regionalverkehr fehlt ganz: <b>Arverio</b> in Bayern und Baden-Württemberg steht nicht in der
-            DB-Reisehistorie, die nur Fernverkehr kennt.
-            {#if REGIONAL.bayern.fahrten || REGIONAL.bawue.fahrten}
-              Dazu kommen {REGIONAL.bayern.fahrten ? `${REGIONAL.bayern.fahrten} Fahrten in Bayern` : ""}{REGIONAL.bayern.fahrten && REGIONAL.bawue.fahrten ? " und " : ""}{REGIONAL.bawue.fahrten ? `${REGIONAL.bawue.fahrten} in Baden-Württemberg` : ""}.
-            {/if}
-          </span>
+          Den Regionalverkehr. Ich fahre das ganze Jahr über deutlich mehr Regionalzüge, bei ganz verschiedenen
+          Anbietern. Das steht nicht in der DB-Reisehistorie und lässt sich deshalb nicht messen. Alle Zahlen dieser
+          Seite sind aus den Fernverkehrsfahrten berechnet und deshalb Näherungen.
         </p>
       </div>
     </div>
@@ -78,30 +68,6 @@
     font-size: clamp(1.3rem, 2vw, 1.7rem);
     font-weight: 800;
     margin-bottom: 0.6rem;
-  }
-
-  /* Hinweisschild für den fehlenden Regionalverkehr: ein Abzeichen, halb Bayern-Blau, halb Baden-Württemberg-Gelb */
-  .gap {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: start;
-    gap: 0.7rem;
-    margin-top: 0.9rem;
-    padding-top: 0.9rem;
-    border-top: 1px solid var(--line);
-  }
-
-  .gap b {
-    color: var(--text);
-  }
-
-  .duo {
-    width: 2.125rem;
-    height: 1.5rem;
-    margin-top: 0.15rem;
-    border-radius: 0.4375rem;
-    background: linear-gradient(115deg, #0a4aa0 0 50%, #ffd500 50% 100%);
-    box-shadow: 0 0 0 1px rgba(40, 45, 55, 0.12);
   }
 
   .cols p {

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import { isHomePath, goSection } from "./router.svelte.js";
-  import { ui } from "./ui.svelte.js";
+  import { jumpToInfo } from "./jump.js";
 
   let { path } = $props();
 
@@ -20,6 +20,13 @@
     if (onMap) hidden = false;
   });
   let prog = $state(0);
+  // "Info" fliegt ans Seitenende zu Projektbeschreibung und Kontakt (zurück nach oben geht es über das Logo)
+  function infoClick() {
+    if (document.getElementById("info")) return jumpToInfo();
+    // Kartenseite: erst zur Startseite, dann ans Ende fliegen
+    location.hash = "#/";
+    setTimeout(jumpToInfo, 450);
+  }
 
   // Auf der Startseite wird gescrollt statt neu geladen
   function go(e, section) {
@@ -86,9 +93,11 @@
       <a href="#/" onclick={(e) => go(e, "top")} class:on={index === 1} aria-current={index === 1 ? "page" : undefined}>Projekt</a>
     </nav>
 
-    <button class="info glass" type="button" onclick={() => (ui.info = true)} aria-haspopup="dialog" aria-label="Info">
+    <button class="info glass" type="button" onclick={infoClick} aria-label="Zu Projektbeschreibung und Kontakt">
       <span class="lbl">Info</span>
-      <svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 11v6m0-10v.01" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none" /></svg>
+      <svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M12 4v15m0 0-6-6m6 6 6-6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      </svg>
     </button>
   </div>
 
@@ -212,7 +221,8 @@
   }
 
   .info .ic {
-    display: none;
+    display: block;
+    margin-left: 0.4rem;
   }
 
   .info:hover {
@@ -329,7 +339,7 @@
     }
 
     .info .ic {
-      display: block;
+      margin-left: 0;
     }
 
     .brand {
