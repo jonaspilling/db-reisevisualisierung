@@ -29,7 +29,7 @@
     <h2 class="say wide">
       <Words text="Das sind" />
       <span class="w" style="--i:2"><span class="wi pct">{nf(pct, 1)}&nbsp;%</span></span>
-      <Words text="einmal um die Erde." from={3} />
+      <Words text="der Strecke einmal um die Erde." from={3} />
     </h2>
 
     <div class="ruler">

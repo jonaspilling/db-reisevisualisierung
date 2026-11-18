@@ -1340,6 +1340,17 @@
       });
       if (full) {
         map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+        // "Nach Norden ausrichten" setzt standardmäßig auch die Neigung zurück, die Karte wäre dann 2D, während
+        // oben noch 3D gewählt ist. Stattdessen: nur nach Norden drehen, die Neigung des gewählten Modus bleibt.
+        mapEl.querySelector(".maplibregl-ctrl-compass")?.addEventListener(
+          "click",
+          (e) => {
+            e.stopImmediatePropagation();
+            orbit = false;
+            map.easeTo({ bearing: 0, pitch: is3D ? PITCH_3D : 0, duration: 700, essential: true });
+          },
+          true
+        );
         // Von Hand bewegt: keine Automatik mehr dazwischenfunken
         map.on("movestart", (e) => {
           if (e.originalEvent) {

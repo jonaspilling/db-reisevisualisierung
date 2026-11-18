@@ -4,7 +4,9 @@
   let { value = 0, digits = 4, label = "" } = $props();
 
   const wheels = $derived.by(() => {
-    const v = Math.max(0, value);
+    // Knapp neben einer ganzen Zahl: einrasten, damit alle Räder sauber auf einer Linie stehen
+    const raw = Math.max(0, value);
+    const v = Math.abs(raw - Math.round(raw)) < 0.05 ? Math.round(raw) : raw;
     const out = [];
     for (let k = digits - 1; k >= 0; k--) {
       const base = Math.floor(v / 10 ** k) % 10;
