@@ -1,3 +1,16 @@
+/* Überschriften-Schrift: Magnuvo (nur die Fettschnitt-Datei, deshalb für alle Gewichte hinterlegt, damit der Browser
+   sie nicht künstlich noch fetter macht). Die Demo-Fassung hat für die Ziffern 5 bis 9 nur ein Wasserzeichen-Zeichen
+   ("Personal use only"), deshalb sind Ziffern ausgenommen (unicode-range lässt U+0030-0039 aus): sie kommen wie
+   fehlende Zeichen (Pfeile) von Libre Franklin. */
+@font-face {
+  font-family: "Magnuvo";
+  src: url("./assets/fonts/MagnuvoDemo-Bold.otf") format("opentype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0020-002F, U+003A-007E, U+00A0-017F, U+2013-2014, U+2018-201E, U+2026;
+}
+
 :root {
   /* Welt: Bahn-Auskunft. Weiss, Anthrazit und genau ein Rot: das DB-Rot. */
   --bg: #ffffff;
@@ -12,7 +25,7 @@
   --on-red: #ffffff;
 
   /* Schrift: eine Familie, über Gewicht gegliedert */
-  --display: "Libre Franklin", "Franklin Gothic Medium", "Arial", system-ui, sans-serif;
+  --display: "Magnuvo", "Libre Franklin", "Franklin Gothic Medium", "Arial", system-ui, sans-serif;
   --sans: "Libre Franklin", "Franklin Gothic Medium", "Arial", system-ui, sans-serif;
 
   /* Bewegung: kräftiges Ease-out, damit Reaktionen sofort spürbar sind */
