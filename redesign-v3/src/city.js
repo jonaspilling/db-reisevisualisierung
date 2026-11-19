@@ -1,0 +1,379 @@
+// Die Stadt um einen Bahnhof aus OpenStreetMap (ausgeschnitten mit tools/extract_city.py aus den OSM-Dateien im Projekt).
+// Jedes Gebäude wird einmal in ein kleines 3D-Netz umgerechnet: Wände, Dachflächen (nach roof:shape), Dachdeckel.
+// Koordinaten danach in Welt-Kilometern (wie die Fahrtlinien), Höhen ebenfalls in Kilometern.
+
+const file = (key) => key.replace(/[() ]/g, "_");
+
+// ---------- kleine Geometrie-Helfer (lokale Meter) ----------
+function signedArea(p) {
+  let a = 0;
+  const n = p.length / 2;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    a += p[2 * i] * p[2 * j + 1] - p[2 * j] * p[2 * i + 1];
+  }
+  return a / 2;
+}
+function reverseRing(p) {
+  const out = [];
+  for (let i = p.length - 2; i >= 0; i -= 2) out.push(p[i], p[i + 1]);
+  return out;
+}
+function centroid(p) {
+  let x = 0, y = 0;
+  const n = p.length / 2;
+  for (let i = 0; i < n; i++) { x += p[2 * i]; y += p[2 * i + 1]; }
+  return [x / n, y / n];
+}
+// Hauptachse (Richtung der größten Ausdehnung) eines Punkthaufens
+function principalAxis(p) {
+  const [cx, cy] = centroid(p);
+  let sxx = 0, syy = 0, sxy = 0;
+  for (let i = 0; i < p.length; i += 2) {
+    const dx = p[i] - cx, dy = p[i + 1] - cy;
+    sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+  }
+  return 0.5 * Math.atan2(2 * sxy, sxx - syy);
+}
+// Flächennormale nach Newell (robust auch für Dreiecke mit doppelten Punkten)
+function newell(pts) {
+  let nx = 0, ny = 0, nz = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    nx += (a[1] - b[1]) * (a[2] + b[2]);
+    ny += (a[2] - b[2]) * (a[0] + b[0]);
+    nz += (a[0] - b[0]) * (a[1] + b[1]);
+  }
+  const l = Math.hypot(nx, ny, nz) || 1;
+  return [nx / l, ny / l, nz / l];
+}
+
+// Umriss vereinfachen (Douglas-Peucker für geschlossene Ringe): Punkte auf geraden Kanten fallen weg,
+// sonst wird aus jedem Zwischenpunkt eine senkrechte Wandkante
+function simplifyRing(p, tol) {
+  const n = p.length / 2;
+  if (n <= 4) return p;
+  const pt = (i) => [p[2 * (i % n)], p[2 * (i % n) + 1]];
+  // Startpunkt und der am weitesten entfernte Punkt teilen den Ring in zwei Hälften
+  let far = 0, fd = -1;
+  const [x0, y0] = pt(0);
+  for (let i = 1; i < n; i++) { const [x, y] = pt(i); const d = (x - x0) ** 2 + (y - y0) ** 2; if (d > fd) { fd = d; far = i; } }
+  const keep = new Uint8Array(n);
+  keep[0] = keep[far] = 1;
+  const rdp = (a, b) => {
+    const [ax, ay] = pt(a), [bx, by] = pt(b);
+    const L = Math.hypot(bx - ax, by - ay) || 1e-9;
+    let best = -1, bd = tol;
+    for (let i = a + 1; i < b; i++) {
+      const [x, y] = pt(i);
+      const d = Math.abs((bx - ax) * (ay - y) - (ax - x) * (by - ay)) / L;
+      if (d > bd) { bd = d; best = i; }
+    }
+    if (best >= 0) { keep[best % n] = 1; rdp(a, best); rdp(best, b); }
+  };
+  rdp(0, far);
+  rdp(far, n);
+  const out = [];
+  for (let i = 0; i < n; i++) if (keep[i]) out.push(p[2 * i], p[2 * i + 1]);
+  return out.length >= 6 ? out : p;
+}
+
+// ---------- ein Gebäude als Netz ----------
+function buildMesh(rec, toW) {
+  let [h, mh, rs, rh, rd, across, st, outer, holes] = rec;
+  outer = simplifyRing(outer, rs === 5 ? 0.35 : 0.6);
+  holes = (holes || []).map((r) => simplifyRing(r, 0.6));
+  if (signedArea(outer) < 0) outer = reverseRing(outer); // außen gegen den Uhrzeigersinn
+  holes = (holes || []).map((r) => (signedArea(r) > 0 ? reverseRing(r) : r)); // innen im Uhrzeigersinn
+  if (holes.length) rs = 0; // Dächer mit Innenhof: flach
+  const n = outer.length / 2;
+  const area = Math.abs(signedArea(outer));
+
+  // Firstrichtung u, quer dazu v
+  let ang;
+  if (rd >= 0) ang = Math.PI / 2 - ((rd + 90) * Math.PI) / 180; // roof:direction ist die Gefällerichtung (Kompass)
+  else ang = principalAxis(outer);
+  if (across) ang += Math.PI / 2;
+  const ux = Math.cos(ang), uy = Math.sin(ang), vx = -uy, vy = ux;
+  let umin = Infinity, umax = -Infinity, vmin = Infinity, vmax = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const u = outer[2 * i] * ux + outer[2 * i + 1] * uy, v = outer[2 * i] * vx + outer[2 * i + 1] * vy;
+    umin = Math.min(umin, u); umax = Math.max(umax, u); vmin = Math.min(vmin, v); vmax = Math.max(vmax, v);
+  }
+  const L = umax - umin, Wd = vmax - vmin, cu = (umin + umax) / 2, cv = (vmin + vmax) / 2;
+
+  if (rs && rh < 0) rh = Math.min(12, Wd * [0, 0.35, 0.35, 0.45, 0.5, 0.3, 0.15][rs]);
+  if (!rs) rh = 0;
+  const area0 = Math.abs(signedArea(outer));
+  // Bahnsteighallen: fast halbkreisförmige Tonnen (wie die großen Hallen in Frankfurt), nicht flach
+  const hall = rs === 5 && st > 0 && area0 / Math.max(1, L * Wd) > 0.72;
+  if (hall) rh = Math.max(rh, Math.min((rec.rise ?? 0.42) * Wd, h - mh - 1.5));
+  if (hall && rec.rise != null && rec.rise < 0.3) rh = Math.min(rh, rec.rise * Wd); // flache Hallen (Lille)
+  if (h - rh < mh + 0.5) rh = Math.max(0, h - mh - 0.5);
+  const ze = h - rh;
+
+  // Dachringe: jeder Ring ist der Grundriss, in u und v zum Mittelpunkt gestaucht, auf einer Höhe
+  let rings;
+  switch (rs) {
+    case 1: rings = [[1, 1, ze], [1, 0, h]]; break; // Satteldach
+    case 2: rings = [[1, 1, ze], [Math.max(0, (L - Wd) / L), 0, h]]; break; // Walmdach
+    case 3: rings = [[1, 1, ze], [0, 0, h]]; break; // Zeltdach
+    case 4: rings = [0, 1, 2, 3, 4].map((k) => { const t = (k / 4) * (Math.PI / 2); return [Math.cos(t), Math.cos(t), ze + rh * Math.sin(t)]; }); break; // Kuppel
+    case 5: rings = [0, 1, 2, 3, 4].map((k) => { const t = (k / 4) * (Math.PI / 2); return [1, Math.cos(t), ze + rh * Math.sin(t)]; }); break; // Tonnendach
+    default: rings = [[1, 1, ze]];
+  }
+
+  const V = []; // Weltpunkte (x, y, z) in km
+  const add = (x, y, z) => { const [X, Y] = toW(x, y); V.push(X, Y, z / 1000); return V.length / 3 - 1; };
+  const ringIdx = (sc, z, skillion) => {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const x = outer[2 * i], y = outer[2 * i + 1];
+      const u = x * ux + y * uy - cu, v = x * vx + y * vy - cv;
+      const U = cu + u * sc[0], Vv = cv + v * sc[1];
+      const zz = skillion ? ze + rh * ((v + Wd / 2) / (Wd || 1)) : z;
+      out.push(add(U * ux + Vv * vx, U * uy + Vv * vy, zz));
+    }
+    return out;
+  };
+  const base = [];
+  for (let i = 0; i < n; i++) base.push(add(outer[2 * i], outer[2 * i + 1], mh));
+  const R = rings.map((r) => ringIdx(r, r[2], rs === 6));
+
+  const P = (i) => [V[3 * i], V[3 * i + 1], V[3 * i + 2]];
+  const F = [];
+  const face = (idx, kind) => {
+    const pts = idx.map(P);
+    // Normale in Metern rechnen (Höhe ist in km wie x/y, also passt das Verhältnis)
+    F.push({ i: idx, n: newell(pts), kind });
+  };
+  // Wände außen (mit Länge und Höhe für Fenster und Türen)
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    face([base[i], base[j], R[0][j], R[0][i]], 0);
+    const f = F[F.length - 1];
+    f.len = Math.hypot(outer[2 * j] - outer[2 * i], outer[2 * j + 1] - outer[2 * i + 1]);
+    f.wh = ze - mh;
+    f.a = [outer[2 * i], outer[2 * i + 1]]; // Wandanfang und -ende in lokalen Metern (für Türen)
+    f.b = [outer[2 * j], outer[2 * j + 1]];
+  }
+  // Wände der Innenhöfe und Deckel mit Löchern
+  const holeIdx = [];
+  for (const hr of holes) {
+    const m = hr.length / 2, b2 = [], t2 = [];
+    for (let i = 0; i < m; i++) { b2.push(add(hr[2 * i], hr[2 * i + 1], mh)); t2.push(add(hr[2 * i], hr[2 * i + 1], ze)); }
+    for (let i = 0; i < m; i++) {
+      const j = (i + 1) % m;
+      face([b2[i], b2[j], t2[j], t2[i]], 0);
+    }
+    holeIdx.push(t2);
+  }
+  // Sattel- und Tonnendächer auf (fast) rechteckigen Grundrissen: richtig als Streifen mit senkrechten Giebeln
+  // bauen (sonst sehen Bahnsteighallen von vorn wie Kuppeln aus)
+  const rectish = area / Math.max(1, L * Wd) > 0.72;
+  if ((rs === 1 || rs === 5) && rectish) {
+    const segs = hall ? 18 : 10;
+    const prof = rs === 1
+      ? [[-1, 0], [0, 1], [1, 0]]
+      : Array.from({ length: segs + 1 }, (_, k) => { const t = Math.PI - (k / segs) * Math.PI; return [Math.cos(t), Math.sin(t)]; });
+    const P0 = (u, pv) => add((cu + u) * ux + (cv + pv[0] * Wd / 2) * vx, (cu + u) * uy + (cv + pv[0] * Wd / 2) * vy, ze + rh * pv[1]);
+    const A = prof.map((pv) => P0(-L / 2, pv)), B = prof.map((pv) => P0(L / 2, pv));
+    const center = [ (cu) * ux + cv * vx, cu * uy + cv * vy ];
+    const [cX, cY] = toW(center[0], center[1]);
+    const outward = (idx) => {
+      // Fläche so drehen, dass die Normale vom Gebäude weg zeigt
+      const pts = idx.map(P);
+      const n0 = newell(pts);
+      let mx = 0, my = 0, mz = 0;
+      for (const p of pts) { mx += p[0]; my += p[1]; mz += p[2]; }
+      mx /= pts.length; my /= pts.length; mz /= pts.length;
+      const dot = n0[0] * (mx - cX) + n0[1] * (my - cY) + n0[2] * (mz - (ze / 1000)) * 0.3;
+      return dot >= 0 ? idx : idx.slice().reverse();
+    };
+    // Querrippen über das Dach (Hallen alle ~9 m, sonst ~12 m) als Linien auf den Dachstreifen
+    const nr = rs === 5 ? Math.max(1, Math.round(L / (hall ? 9 : 12))) : 0;
+    for (let k = 0; k < prof.length - 1; k++) {
+      const idx = outward([A[k], A[k + 1], B[k + 1], B[k]]);
+      const f = { i: idx, n: newell(idx.map(P)), kind: 1 };
+      if (nr > 1) {
+        f.lines = [];
+        for (let r = 1; r < nr; r++) {
+          const u = -L / 2 + (L * r) / nr;
+          f.lines.push([P0(u, prof[k]), P0(u, prof[k + 1])]);
+        }
+      }
+      F.push(f);
+    }
+    // Giebel mit senkrechten Sprossen (Glasfront der Halle)
+    for (const [G, u] of [[A, -L / 2], [B, L / 2]]) {
+      const idx = outward(G.slice());
+      const f = { i: idx, n: newell(idx.map(P)), kind: 1 };
+      if (rs === 5 && hall) {
+        // verglaster Halbkreisgiebel: Rahmenbogen innen, senkrechte Sprossen, Kämpferband, kurze Bogensteine
+        f.lines = [];
+        const fi = 0.86;
+        const inner = prof.map(([x, z]) => P0(u, [x * fi, z * fi]));
+        for (let k = 0; k < prof.length - 1; k++) f.lines.push([inner[k], inner[k + 1]]);
+        for (let k = 1; k < prof.length - 1; k++) {
+          f.lines.push([inner[k], P0(u, [prof[k][0] * fi, 0])]);
+          if (k % 2 === 0) f.lines.push([G[k], inner[k]]);
+        }
+        for (const zq of [0.38, 0.62]) {
+          const xq = Math.sqrt(1 - (zq / fi) ** 2) * fi;
+          f.lines.push([P0(u, [-xq, zq]), P0(u, [xq, zq])]);
+        }
+      } else if (rs === 5) {
+        f.lines = [];
+        for (let k = 1; k < prof.length - 1; k++) f.lines.push([G[k], P0(u, [prof[k][0], 0])]);
+        const zq = 0.55; // Kämpferlinie
+        const xq = Math.sqrt(1 - zq * zq);
+        f.lines.push([P0(u, [-xq, zq]), P0(u, [xq, zq])]);
+      }
+      F.push(f);
+    }
+  } else {
+    // alle anderen Dächer: Grundriss in Ringen zum Mittelpunkt hin stauchen
+    for (let k = 0; k < R.length - 1; k++)
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        face([R[k][i], R[k][j], R[k + 1][j], R[k + 1][i]], 1);
+      }
+  }
+  // Deckel (flaches Dach, Pultdach oder oberster Kuppelring)
+  if (rs === 0 || rs === 6 || rs === 4) {
+    const top = R[R.length - 1];
+    const f = { i: top, n: rs === 6 ? newell(top.map(P)) : [0, 0, 1], kind: 2, holes: holeIdx };
+    // München: flaches Hallendach mit aufgesetzten Oberlicht-Kästen quer über die Halle
+    let pushed = false;
+    if (rs === 0 && rec.lantern && area > 2000 && rectish && !holes.length) {
+      F.push(f); // erst das Dach, dann die Aufbauten darauf
+      pushed = true;
+      const bandW = 4, gap = 13, hz = h + 2.6;
+      const box = (u0, u1, v0, v1) => {
+        const c = (u, v) => [(cu + u) * ux + (cv + v) * vx, (cu + u) * uy + (cv + v) * vy];
+        const ring = [c(u0, v0), c(u1, v0), c(u1, v1), c(u0, v1)];
+        const b = ring.map(([x, y]) => add(x, y, h)), t = ring.map(([x, y]) => add(x, y, hz));
+        for (let i = 0; i < 4; i++) face([b[i], b[(i + 1) % 4], t[(i + 1) % 4], t[i]], 0);
+        const topF = { i: t, n: [0, 0, 1], kind: 2, lines: [[add(...c((u0 + u1) / 2, v0), hz), add(...c((u0 + u1) / 2, v1), hz)]] };
+        F.push(topF);
+      };
+      for (let u = -L / 2 + gap / 2; u < L / 2 - bandW; u += gap) box(u, u + bandW, -Wd * 0.44, Wd * 0.44);
+    } else if (rs === 0 && st > 0 && area > 1500 && rectish && !holes.length) {
+      // große flache Bahnhofsdächer: Oberlichtbänder quer über das Dach
+      f.lines = [];
+      const step = Math.max(6, Math.min(12, L / 14));
+      for (let u = -L / 2 + step; u < L / 2 - step / 2; u += step) {
+        const pa = (cu + u) * ux + (cv - Wd * 0.42) * vx, pb = (cu + u) * uy + (cv - Wd * 0.42) * vy;
+        const qa = (cu + u) * ux + (cv + Wd * 0.42) * vx, qb = (cu + u) * uy + (cv + Wd * 0.42) * vy;
+        f.lines.push([add(pa, pb, h), add(qa, qb, h)]);
+      }
+    }
+    if (!pushed) F.push(f);
+  }
+  const [cx, cy] = centroid(outer);
+  let rad = 0;
+  for (let i = 0; i < n; i++) rad = Math.max(rad, Math.hypot(outer[2 * i] - cx, outer[2 * i + 1] - cy));
+  const [wx, wy] = toW(cx, cy);
+  return { V: new Float64Array(V), F, st, lo: outer, top: R[0], h: h / 1000, ze: ze / 1000, mh: mh / 1000, c: [wx, wy, h / 2000], lc: [cx, cy], rad: rad / 1000, area, floors: Math.max(0, Math.floor((ze - mh) / 3.2)) };
+}
+
+// Höhen korrigieren: Bahnhofsgebäude, die in OSM ohne (oder mit unplausibler) Höhe erfasst sind,
+// bekommen eine realistische Höhe; dazu gezielte Werte je Bahnhof (boost: Kreis in lokalen Metern + Höhe)
+function fixHeight(rec, opts) {
+  const boost = opts.boost;
+  rec.rise = opts.rise;
+  const o = rec[7], n = o.length / 2;
+  let cx = 0, cy = 0;
+  for (let i = 0; i < n; i++) { cx += o[2 * i]; cy += o[2 * i + 1]; }
+  cx /= n; cy /= n;
+  let boosted = false;
+  for (const bo of boost || []) {
+    if (Math.hypot(cx - bo.c[0], cy - bo.c[1]) < bo.r && rec[2] !== 5) {
+      rec[0] = Math.max(rec[0], bo.h);
+      if (bo.roof) { rec[2] = bo.roof; rec[3] = bo.rh ?? -1; }
+      boosted = true;
+      break;
+    }
+  }
+  if (!boosted && rec[6] === 1 && rec[2] === 0 && rec[0] < 18 && Math.abs(signedArea(o)) > 400) rec[0] = 20;
+  // Markante Bahnhofsdächer: in OSM sind viele Hallen flach erfasst. Lange, große Bahnhofsbauten bekommen
+  // ein Tonnendach (Bahnsteighalle), kleine schlichte Empfangsgebäude ein Walmdach.
+  // je Bahnhof nach dem echten Vorbild: halls = Bogenhallen erlaubt, hips = Walmdächer, lanterns = Oberlichter
+  if (rec[6] > 0 && rec[2] === 0 && opts.lanterns) rec.lantern = true;
+  if (rec[6] > 0 && rec[2] === 0 && (opts.halls !== false || opts.hips !== false)) {
+    const s = simplifyRing(o, 0.8), a = principalAxis(s);
+    const ux = Math.cos(a), uy = Math.sin(a);
+    let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+    for (let i = 0; i < s.length; i += 2) {
+      const u = s[i] * ux + s[i + 1] * uy, v = -s[i] * uy + s[i + 1] * ux;
+      u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
+    }
+    const L = u1 - u0, Wd = v1 - v0, area = Math.abs(signedArea(s)), rect = area / Math.max(1, L * Wd);
+    if (opts.halls !== false && area > 1500 && L / Wd > 1.5 && rect > 0.78 && Wd > 14) {
+      rec[2] = 5;
+      rec[3] = Math.min(Wd * 0.2, 15);
+      rec[0] = Math.max(rec[0], rec[1] + 6) + rec[3];
+    } else if (opts.hips !== false && rec[6] === 1 && area > 250 && s.length / 2 <= 8 && rect > 0.82 && Wd < 40) {
+      rec[2] = 2;
+      rec[3] = Math.min(5, Wd * 0.28);
+      rec[0] += rec[3];
+    }
+  }
+}
+
+export async function loadCity(key, w, kx, opts = {}) {
+  const r = await fetch(`data/city/${file(key)}.json`);
+  if (!r.ok) return null;
+  const d = await r.json();
+  const toW = (x, y) => [w[0] + (x / 1000) * kx, w[1] + y / 1000];
+  // Netze in Portionen bauen, damit laufende Kamerafahrten nicht stocken
+  const buildings = [];
+  let k = 0;
+  for (const rec of d.b) {
+    if (++k % 250 === 0) await new Promise((r) => setTimeout(r, 0));
+    if (rec[0] <= 2 || rec[7].length < 6) continue;
+    fixHeight(rec, opts);
+    try { buildings.push(buildMesh(rec, toW)); } catch { /* kaputte Geometrie überspringen */ }
+  }
+  const lines = (arr, off = 0) =>
+    arr.map((l) => {
+      const m = (l.length - off) / 2, g = new Float64Array(m * 2);
+      for (let i = 0; i < m; i++) {
+        const [X, Y] = toW(l[off + 2 * i], l[off + 2 * i + 1]);
+        g[2 * i] = X; g[2 * i + 1] = Y;
+      }
+      return { g, cls: off ? l[0] : 0 };
+    });
+  const areas = (d.wa || []).map(([o, hs]) => {
+    const conv = (ring) => { const m = ring.length / 2, g = new Float64Array(m * 2); for (let i = 0; i < m; i++) { const [X, Y] = toW(ring[2 * i], ring[2 * i + 1]); g[2 * i] = X; g[2 * i + 1] = Y; } return g; };
+    return [conv(o), ...hs.map(conv)];
+  });
+  return { axis: d.axis, r: d.r, buildings, raw: d, road: lines(d.road, 1), rail: lines(d.rail), water: lines(d.water), wa: areas, toW };
+}
+
+// Der Bahnhof selbst: alle als Bahnhof gekennzeichneten Gebäude in der Nähe; dazu Mitte, Achsen und Ausdehnung
+export function stationCluster(city, spot) {
+  if (spot) {
+    // fest eingestellt: alle (oder alle als Bahnhof markierten) Gebäude in einem Kreis
+    const inR = spot.rect
+      ? (b) => b.lc[0] > spot.rect[0] && b.lc[0] < spot.rect[2] && b.lc[1] > spot.rect[1] && b.lc[1] < spot.rect[3]
+      : (b) => Math.hypot(b.lc[0] - spot.c[0], b.lc[1] - spot.c[1]) < spot.r;
+    for (const b of city.buildings) b.station = inR(b) && (spot.all || b.st > 0);
+    if (!city.buildings.some((b) => b.station)) for (const b of city.buildings) b.station = Math.hypot(b.lc[0] - spot.c[0], b.lc[1] - spot.c[1]) < spot.r * 0.5;
+    return city.buildings.filter((b) => b.station);
+  }
+  const dist = (b) => Math.hypot(b.lc[0], b.lc[1]);
+  // Keim: das als Bahnhof gekennzeichnete Gebäude, das dem Stationspunkt am nächsten liegt
+  // (nicht alle "Gare"-Gebäude der Stadt, sonst zählt z. B. Lille Flandres mit)
+  const cand = city.buildings.filter((b) => b.st === 1 && dist(b) < 400).sort((a, b) => dist(a) - dist(b));
+  let seed = cand[0];
+  if (!seed) seed = city.buildings.filter((b) => b.st === 2 && dist(b) < 300).sort((a, b) => dist(a) - dist(b))[0];
+  if (!seed) seed = city.buildings.slice().sort((a, b) => dist(a) - dist(b))[0];
+  for (const b of city.buildings) b.station = false;
+  if (!seed) return [];
+  const near = (b, r) => Math.hypot(b.lc[0] - seed.lc[0], b.lc[1] - seed.lc[1]) < r + seed.rad * 1000;
+  for (const b of city.buildings) {
+    if (b === seed || (b.st === 1 && near(b, 140)) || (b.st === 2 && near(b, 220))) b.station = true;
+  }
+  return city.buildings.filter((b) => b.station);
+}

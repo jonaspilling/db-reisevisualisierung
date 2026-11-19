@@ -1,0 +1,248 @@
+:root {
+  --ink: #111;
+  --ink-2: #6b6b6b;
+  --paper: #fff;
+  --line: #dedede;
+  --pad: clamp(16px, 2.6vw, 36px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Schibsted Grotesk", system-ui, sans-serif;
+}
+
+.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.03em; }
+
+#map {
+  position: fixed;
+  inset: 0;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+#map:active { cursor: grabbing; }
+
+/* Weißblende beim Betreten und Verlassen eines Bahnhofs */
+.fade {
+  position: fixed;
+  inset: 0;
+  background: var(--paper);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.brand {
+  position: fixed;
+  left: var(--pad);
+  top: var(--pad);
+  pointer-events: none;
+}
+.brand h1 { margin: 0; font-size: clamp(1.2rem, 2vw, 1.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+.brand p { margin: 0.35rem 0 0; font-size: 0.74rem; text-transform: uppercase; color: var(--ink-2); }
+
+button {
+  font: 700 0.9rem "Schibsted Grotesk", system-ui, sans-serif;
+  padding: 0.55rem 1.05rem;
+  border-radius: 99px;
+  border: 1.5px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 160ms, color 160ms, transform 160ms;
+}
+button:hover, button:focus-visible { background: var(--ink); color: var(--paper); outline: none; }
+button:active { transform: scale(0.97); }
+
+.mapbtn { position: fixed; right: var(--pad); top: var(--pad); }
+body.mapmode .mapbtn { display: none; }
+
+/* Das Jahr in Zahlen (nur in der Übersicht) */
+.stats {
+  position: fixed;
+  right: var(--pad);
+  top: var(--pad);
+  margin: 0;
+  display: flex;
+  gap: clamp(1rem, 2.6vw, 2.4rem);
+  text-align: right;
+  pointer-events: none;
+  transition: opacity 400ms;
+}
+body:not(.mapmode) .stats { opacity: 0; }
+.stats dt { font: 500 0.7rem "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+.stats dd { margin: 0.15rem 0 0; font: 800 clamp(1.3rem, 2.4vw, 2rem) "Schibsted Grotesk", system-ui, sans-serif; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+
+/* Die Zeitleiste: jede Fahrt ein Strich am echten Datum, Höhe = Kilometer */
+.year {
+  position: fixed;
+  left: 50%;
+  bottom: var(--pad);
+  transform: translateX(-50%);
+  width: min(52rem, calc(100vw - 2 * var(--pad)));
+}
+body:not(.mapmode) .year {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 16px 12px rgba(255, 255, 255, 0.92);
+  border-radius: 6px;
+}
+.y-cap {
+  margin: 0 0 0.55rem;
+  min-height: 1.2em;
+  font-size: 0.78rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.y-cap b { font-weight: 600; }
+.y-track {
+  position: relative;
+  height: 46px;
+  border-bottom: 1.5px solid var(--ink);
+}
+.y-bar {
+  position: absolute;
+  bottom: 0;
+  width: 14px;
+  margin-left: -7px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.y-bar::after {
+  content: "";
+  position: absolute;
+  left: calc(50% - 2px);
+  right: calc(50% - 2px);
+  bottom: 0;
+  height: var(--h);
+  background: #b9b9b9;
+  border-radius: 2px 2px 0 0;
+  transition: background-color 150ms, left 150ms, right 150ms;
+}
+.y-bar:hover, .y-bar:focus-visible { background: transparent; outline: none; }
+.y-bar:hover::after, .y-bar:focus-visible::after, .y-bar.on::after { background: var(--ink); left: calc(50% - 3.5px); right: calc(50% - 3.5px); }
+.y-bar.cur::after { background: var(--ink); }
+.y-months { display: flex; justify-content: space-between; margin-top: 0.35rem; font-size: 0.66rem; color: var(--ink-2); text-transform: uppercase; }
+.y-months span { flex: 1; text-align: left; }
+
+@media (max-width: 700px) {
+  .stats { left: var(--pad); right: var(--pad); top: calc(var(--pad) + 3.4rem); justify-content: space-between; text-align: left; }
+  .stats dd { font-size: 1.2rem; }
+  .y-cap { white-space: normal; min-height: 2.4em; }
+  .y-months span:nth-child(even) { visibility: hidden; }
+}
+
+/* Die Fahrkarte */
+.ticket {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--pad) + 6.4rem);
+  transform: translateX(-50%);
+  width: min(34rem, calc(100vw - 2 * var(--pad)));
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.1rem 1rem 1.25rem;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 12px;
+  /* gestanzte Kerben links und rechts */
+  -webkit-mask: radial-gradient(circle 9px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle 9px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+          mask: radial-gradient(circle 9px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle 9px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+  transition: opacity 400ms, transform 400ms;
+}
+.ticket.away { opacity: 0; transform: translate(-50%, 20px); pointer-events: none; }
+
+.t-main { min-width: 0; font-size: 0.78rem; }
+.t-main p { margin: 0; }
+.t-top { display: flex; justify-content: space-between; gap: 1rem; color: var(--ink-2); text-transform: uppercase; font-size: 0.7rem; }
+.t-arr { margin-bottom: 0.55rem !important; padding-bottom: 0.5rem; border-bottom: 1px dashed #cfcfcf; font-size: 0.72rem; }
+.t-route { display: grid; grid-template-columns: auto 1fr auto; align-items: end; gap: 0.7rem; margin: 0.45rem 0 0.35rem; }
+.t-end { display: grid; gap: 0.1rem; min-width: 0; }
+.t-end.r { text-align: right; }
+.t-end span { font: 600 0.88rem "Schibsted Grotesk", system-ui, sans-serif; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 11rem; }
+.t-time { font: 800 1.45rem "Schibsted Grotesk", system-ui, sans-serif; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.t-line { position: relative; height: 1.1rem; margin-bottom: 0.45rem; border-bottom: 1.5px solid var(--ink); text-align: center; }
+.t-line::after { content: ""; position: absolute; right: -2px; bottom: -5px; border: 4px solid transparent; border-left: 7px solid var(--ink); }
+.t-line i { font-style: normal; font-size: 0.68rem; color: var(--ink-2); }
+.t-meta { color: var(--ink-2); }
+.t-big { margin: 0.35rem 0 0.25rem !important; font: 800 1.2rem "Schibsted Grotesk", system-ui, sans-serif; letter-spacing: -0.02em; }
+
+.t-go { background: var(--ink); color: var(--paper); padding: 0.75rem 1.2rem; }
+.t-go:hover, .t-go:focus-visible { background: var(--paper); color: var(--ink); }
+.t-go[hidden] { display: none; }
+
+/* Stempel beim Einsteigen */
+.stamp {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-left: -3.5rem;
+  padding: 0.3rem 0.7rem;
+  border: 2.5px solid var(--ink);
+  border-radius: 6px;
+  font: 800 1rem "Schibsted Grotesk", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  transform: translateY(-50%) rotate(-12deg) scale(1.8);
+  pointer-events: none;
+}
+.stamp.on { animation: stamp 420ms cubic-bezier(0.2, 1.4, 0.4, 1) forwards; }
+@keyframes stamp { to { opacity: 0.9; transform: translateY(-50%) rotate(-12deg) scale(1); } }
+
+/* 16 Fahrten als Punkte */
+.dots {
+  position: fixed;
+  left: 50%;
+  bottom: var(--pad);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 7px;
+}
+.dot {
+  width: 11px;
+  height: 11px;
+  padding: 0;
+  border: 1.5px solid #bdbdbd;
+  border-radius: 50%;
+  background: var(--paper);
+}
+.dot.done { background: var(--ink); border-color: var(--ink); }
+.dot.next { border-color: var(--ink); box-shadow: 0 0 0 3px var(--paper), 0 0 0 4.5px var(--ink); }
+.dot:hover, .dot:focus-visible { transform: scale(1.35); background: var(--ink); border-color: var(--ink); }
+body.mapmode .dots { bottom: var(--pad); }
+
+.tip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  pointer-events: none;
+  font-size: 0.85rem;
+}
+.tip[hidden] { display: none; }
+.tip span { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.75rem; color: var(--ink-2); }
+
+@media (max-width: 600px) {
+  .ticket { grid-template-columns: 1fr; }
+  .t-go { justify-self: stretch; }
+  .t-end span { max-width: 8rem; }
+}

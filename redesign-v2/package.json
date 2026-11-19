@@ -12,7 +12,9 @@
     "gsap": "^3.15.1",
     "maplibre-gl": "^6.18.0"
   },
-  "allowScripts": { "esbuild@0.21.5": true },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "svelte": "^5.0.0",

@@ -1,38 +1,74 @@
-/* Bordbistro v2: zwei Richtungen (dunkel/plakativ, hell/redaktionell) über data-theme am <html>.
-   Alle Farben sind Variablen, nichts ist fest im Bauteil. */
+/* Bordbistro v3: Bistro im Zug. Dunkelgrüne Wand, Holz, Creme, DB-Rot und Bierbernstein. */
 :root {
   --red: #ec0016;
-  --font-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --beer: #f2b705;
+  --wood: #7a5233;
+  --wood-2: #a97a4b;
   --font-text: "Instrument Sans", system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, "Cascadia Mono", monospace;
+  --font-hand: "Caveat", "Segoe Print", cursive;
   --accent-font: "joc", var(--font-display);
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
   --pad: clamp(1.1rem, 4vw, 3.5rem);
   --bar-h: 4.25rem;
-}
 
-:root[data-theme="dark"] {
-  --bg: #0c0e13;
-  --bg-2: #14171e;
-  --bg-3: #1d212b;
-  --ink: #f2efe9;
-  --ink-2: #a2a8b4;
-  --line: rgba(242, 239, 233, 0.14);
-  --red-ink: #ff4254; /* Rot als Schrift auf Dunkel: heller, damit der Kontrast reicht */
+  --bg: #101a15;
+  --bg-2: #17231d;
+  --bg-3: #213029;
+  --ink: #f3ead7;
+  --ink-2: #b7b3a2;
+  --line: rgba(243, 234, 215, 0.16);
+  --red-ink: #ff4a5a;
   --on-red: #ffffff;
+  --paper: #f3ead7;
+  --paper-2: #e9dfc6;
+  --paper-ink: #1b2620;
+  --paper-ink-2: #5d5a4c;
   color-scheme: dark;
 }
 
-:root[data-theme="light"] {
-  --bg: #f3efe6;
-  --bg-2: #eae5d9;
-  --bg-3: #ded8c8;
-  --ink: #14161b;
-  --ink-2: #595e68;
-  --line: rgba(20, 22, 27, 0.16);
-  --red-ink: #d4001a;
-  --on-red: #ffffff;
-  color-scheme: light;
+/* Überschriften-Schrift: im Studio-Knopf (Aa) wählbar. --ds gleicht die Breite der Schrift aus. */
+:root,
+:root[data-font="bricolage"] {
+  --font-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --fw: 800;
+  --ls: -0.04em;
+  --ds: 1;
+}
+
+:root[data-font="funnel"] {
+  --font-display: "Funnel Display", "Arial Narrow", system-ui, sans-serif;
+  --fw: 800;
+  --ls: -0.035em;
+  --ds: 1;
+}
+
+:root[data-font="unbounded"] {
+  --font-display: "Unbounded", system-ui, sans-serif;
+  --fw: 800;
+  --ls: -0.045em;
+  --ds: 0.72;
+}
+
+:root[data-font="syne"] {
+  --font-display: "Syne", system-ui, sans-serif;
+  --fw: 800;
+  --ls: -0.03em;
+  --ds: 0.86;
+}
+
+:root[data-font="space"] {
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --fw: 700;
+  --ls: -0.05em;
+  --ds: 0.95;
+}
+
+:root[data-font="fraunces"] {
+  --font-display: "Fraunces", Georgia, serif;
+  --fw: 800;
+  --ls: -0.035em;
+  --ds: 0.95;
 }
 
 *,
@@ -56,13 +92,17 @@ body {
   font-size: 1.0625rem;
   line-height: 1.5;
   overflow-x: clip;
-  transition: background-color 400ms var(--ease), color 400ms var(--ease);
 }
 
 h1,
 h2,
 h3,
-p {
+h4,
+p,
+ul,
+ol,
+dl,
+dd {
   margin: 0;
 }
 
@@ -70,9 +110,9 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-weight: 800;
+  font-weight: var(--fw);
   line-height: 0.95;
-  letter-spacing: -0.035em;
+  letter-spacing: var(--ls);
   font-variation-settings: "opsz" 96;
   text-wrap: balance;
 }
@@ -97,12 +137,16 @@ button {
 
 .mono {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-/* Akzentwort in joc */
+.hand {
+  font-family: var(--font-hand);
+  font-weight: 700;
+}
+
 .acc {
   font-family: var(--accent-font);
   font-weight: 900;
@@ -111,6 +155,70 @@ button {
 
 .red {
   color: var(--red-ink);
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+
+.mask > span {
+  display: inline-block;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.95rem 1.5rem;
+  border-radius: 99px;
+  background: var(--red);
+  color: var(--on-red);
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 220ms var(--ease), background-color 220ms var(--ease), gap 220ms var(--ease);
+}
+
+.btn:hover {
+  gap: 1.1rem;
+  background: #c80013;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn.ghost {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--ink);
+  color: var(--ink);
+}
+
+.btn.ghost:hover {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100svh;
+}
+
+/* Seitenüberschrift (große Titelzeile jeder Unterseite) */
+.page-title {
+  font-size: calc(var(--ds) * clamp(3.6rem, 13vw, 12rem));
+  line-height: 0.9;
 }
 
 @media (prefers-reduced-motion: reduce) {
