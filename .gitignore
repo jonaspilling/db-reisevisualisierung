@@ -34,12 +34,13 @@ data/.overpass_cache/
 **/.impeccable/live/sessions/
 # impeccable-ignore-end
 
-# Impeccable: Skills (.claude/skills, .claude/agents) bleiben im Git, damit das Tool
-# auf jedem Rechner nutzbar ist. Nicht ins Git gehören:
-#  - die plattformspezifische Programmdatei (lädt sich beim ersten Start selbst herunter)
-#  - die lokalen Hook-Einstellungen (erzeugt von "npx impeccable install")
-.claude/skills/impeccable/scripts/bin/
+# KI-Werkzeuge: Skills, Agenten und Installer-Reste gehören nicht ins Git (lassen sich neu installieren)
+.claude/skills/
+.claude/agents/
 .claude/settings.local.json
+skills-lock.json
+.agents/
+.impeccable/
 
 # Lokale Zwischenstände
 *.log

@@ -2,7 +2,7 @@
   // Kleines Osterei auf der Statistikseite: Wie viele Biere pro Fahrt im Bordbistro?
   // Eingabe immer genau mit einer Kommastelle (z. B. 2,9). Wer die richtige Zahl trifft, bekommt den Song.
   // Der Song läuft über alle Seiten weiter (siehe music.svelte.js und die kleine Anzeige MiniPlayer).
-  import { music, playSong, toggleSong, seekSong } from "./music.svelte.js";
+  import { music, playSong, toggleSong, seekSong } from "../lib/music.svelte.js";
 
   const ANSWER = "2,9";
 

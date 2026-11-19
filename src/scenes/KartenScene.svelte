@@ -4,7 +4,7 @@
   // damit der Start der Seite flüssig bleibt.
   import { onMount } from "svelte";
   import { scene, isPhone } from "../lib/scenes.js";
-  import MapPage from "../lib/LazyMapPage.svelte";
+  import MapPage from "../components/LazyMapPage.svelte";
 
   let { trips, stations } = $props();
 

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from "svelte";
-  import { isHomePath, goSection } from "./router.svelte.js";
-  import { jumpToInfo } from "./jump.js";
+  import { isHomePath, goSection } from "../lib/router.svelte.js";
+  import { jumpToInfo } from "../lib/jump.js";
   import Logo from "./Logo.svelte";
 
   let { path } = $props();

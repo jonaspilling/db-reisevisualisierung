@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "google-fonts": {
+      "command": "uvx",
+      "args": ["google-fonts-mcp"]
+    }
+  }
+}
