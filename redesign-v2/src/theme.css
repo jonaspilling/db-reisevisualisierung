@@ -1,0 +1,120 @@
+/* Bordbistro v2: zwei Richtungen (dunkel/plakativ, hell/redaktionell) über data-theme am <html>.
+   Alle Farben sind Variablen, nichts ist fest im Bauteil. */
+:root {
+  --red: #ec0016;
+  --font-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --font-text: "Instrument Sans", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "Cascadia Mono", monospace;
+  --accent-font: "joc", var(--font-display);
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --pad: clamp(1.1rem, 4vw, 3.5rem);
+  --bar-h: 4.25rem;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0c0e13;
+  --bg-2: #14171e;
+  --bg-3: #1d212b;
+  --ink: #f2efe9;
+  --ink-2: #a2a8b4;
+  --line: rgba(242, 239, 233, 0.14);
+  --red-ink: #ff4254; /* Rot als Schrift auf Dunkel: heller, damit der Kontrast reicht */
+  --on-red: #ffffff;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f3efe6;
+  --bg-2: #eae5d9;
+  --bg-3: #ded8c8;
+  --ink: #14161b;
+  --ink-2: #595e68;
+  --line: rgba(20, 22, 27, 0.16);
+  --red-ink: #d4001a;
+  --on-red: #ffffff;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  overflow-x: clip;
+  transition: background-color 400ms var(--ease), color 400ms var(--ease);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  font-variation-settings: "opsz" 96;
+  text-wrap: balance;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--red-ink);
+  outline-offset: 3px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Akzentwort in joc */
+.acc {
+  font-family: var(--accent-font);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.red {
+  color: var(--red-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}
