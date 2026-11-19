@@ -1,7 +1,7 @@
 <script>
   import { formatDuration, trainTypes } from "../lib/data.js";
   import { routeRanking, weekdayCounts, shortName } from "../lib/facts.js";
-  import BierEgg from "../lib/BierEgg.svelte";
+  import BierEgg from "../components/BierEgg.svelte";
 
   let { trips, stations } = $props();
 

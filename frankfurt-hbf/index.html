@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frankfurt (Main) Hbf – in Linien</title>
+<style>
+  :root { --ink: #111; --paper: #fff; --mute: #6f6f6f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); }
+  body { font-family: ui-sans-serif, "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+
+  svg { position: fixed; inset: 0; width: 100%; height: 100%; }
+  path { fill: none; stroke: var(--ink); stroke-linejoin: round; }
+
+  header { position: fixed; left: clamp(16px, 3vw, 40px); top: clamp(14px, 3vh, 32px); z-index: 2; }
+  h1 { margin: 0; font-size: clamp(1.1rem, 2vw, 1.5rem); letter-spacing: -0.01em; }
+  .sub { margin: 0.2rem 0 0; font: 500 0.8rem ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); }
+
+  .tools { position: fixed; right: clamp(16px, 3vw, 40px); bottom: clamp(14px, 3vh, 32px); z-index: 2; display: flex; gap: 0.5rem; }
+  button { font: 600 0.9rem inherit; font-family: inherit; padding: 0.6rem 1.1rem; border-radius: 99px; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; transition: background-color 200ms, color 200ms; }
+  button:hover, button:focus-visible { background: var(--ink); color: var(--paper); outline: none; }
+
+  .bar { position: fixed; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--ink); transform-origin: left; transform: scaleX(0); z-index: 2; }
+  .cap { position: fixed; left: clamp(16px, 3vw, 40px); bottom: clamp(14px, 3vh, 32px); z-index: 2; font: 500 0.8rem ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: 0.06em; color: var(--mute); opacity: 0; transition: opacity 1.2s; max-width: 46ch; }
+  .cap.on { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Frankfurt (Main) Hbf</h1>
+  <p class="sub">Hauptportal · Blick vom Bahnhofsvorplatz</p>
+</header>
+
+<svg id="art" viewBox="0 0 1600 760" preserveAspectRatio="xMidYMid meet" aria-label="Frankfurter Hauptbahnhof von vorn, als schwarze Linienzeichnung"></svg>
+
+<p class="cap" id="cap">Handgezeichnet, nicht maßstabsgetreu.</p>
+<div class="tools"><button type="button" id="replay">Nochmal zeichnen ↻</button></div>
+<div class="bar" id="bar"></div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Der Frankfurter Hauptbahnhof von vorn, nur aus Linien.
+// Alles ist in Zahlen beschrieben (Bildfläche 1600 × 760, Boden bei y = 660),
+// die Zeichnung ist spiegelsymmetrisch: sym() zeichnet jede Seite einmal.
+// ---------------------------------------------------------------------------
+const W = 1600, G = 660;
+const items = [];
+const f = (n) => +n.toFixed(1);
+
+// add(Pfad, { w: Strichstärke, op: Deckkraft, t: Startzeit in s, dur: Dauer in s })
+const add = (d, o = {}) => { if (d) items.push({ d, w: o.w ?? 1.5, op: o.op ?? 1, t: o.t ?? 0, dur: o.dur }); };
+const sym = (fn) => { fn((x) => x); fn((x) => W - x); };
+
+const L = (x1, y1, x2, y2) => `M${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}`;
+const R = (x1, y1, x2, y2) => `M${f(x1)} ${f(y1)}H${f(x2)}V${f(y2)}H${f(x1)}Z`;
+// Rundbogen: Mitte cx, Breite w, Unterkante yb, Oberkante yt
+const arch = (cx, w, yb, yt) => { const r = w / 2, s = yt + r; return `M${f(cx - r)} ${f(yb)}V${f(s)}A${r} ${r} 0 0 1 ${f(cx + r)} ${f(s)}V${f(yb)}`; };
+const circ = (cx, cy, r) => `M${f(cx - r)} ${f(cy)}A${r} ${r} 0 1 1 ${f(cx + r)} ${f(cy)}A${r} ${r} 0 1 1 ${f(cx - r)} ${f(cy)}`;
+const ell = (cx, cy, rx, ry) => `M${f(cx - rx)} ${f(cy)}A${rx} ${ry} 0 1 1 ${f(cx + rx)} ${f(cy)}A${rx} ${ry} 0 1 1 ${f(cx - rx)} ${f(cy)}`;
+const poly = (...p) => 'M' + p.map((v, i) => (i % 2 ? '' : (i ? 'L' : '')) + f(v) + (i % 2 ? '' : ' ')).join('').replace(/ L/g, 'L').trim() + 'Z';
+const ticks = (x1, x2, y1, y2, step) => { let d = ''; for (let x = x1; x <= x2 + 0.1; x += step) d += `M${f(x)} ${y1}V${y2}`; return d; };
+
+// ---- Boden, Stufen, Platz -------------------------------------------------
+add(L(0, G, W, G), { w: 2.2, t: 0, dur: 2.6 });
+for (let i = 0; i < 4; i++) {
+  const y = G + (i + 1) * 9;
+  add(L(600 - i * 14, y, 1000 + i * 14, y), { w: 1.4, t: 1.0 + i * 0.25, dur: 1.2 });
+}
+add(L(600, G, 586, G + 36), { w: 1.2, t: 2.0, dur: 0.6 });
+add(L(1000, G, 1014, G + 36), { w: 1.2, t: 2.0, dur: 0.6 });
+[[706, 0.5], [738, 0.35], [752, 0.25]].forEach(([y, op], i) => add(L(0, y, W, y), { w: 1, op, t: 2.2 + i * 0.3, dur: 2.2 }));
+
+// ---- Mittelbau: die Pfeiler, der große Bogen, die Tore ------------------------
+sym((X) => {
+  // Außenwand und Sockel
+  add(L(X(540), G, X(540), 318), { w: 2, t: 2.2, dur: 1.8 });
+  add(L(X(540), 640, X(640), 640), { w: 1.3, t: 2.6, dur: 0.8 });
+  add(L(X(540), 646, X(640), 646), { w: 1, op: 0.6, t: 2.7, dur: 0.8 });
+  // Pfeiler (mit Säulenschäften), Sockel und Kapitell
+  add(L(X(640), 640, X(640), 205), { w: 2, t: 3.0, dur: 2.2 });
+  add(L(X(680), 640, X(680), 360), { w: 2, t: 3.1, dur: 1.4 });
+  add(L(X(650), 628, X(650), 232), { w: 1, op: 0.7, t: 3.6, dur: 1.8 });
+  add(L(X(670), 628, X(670), 360), { w: 1, op: 0.7, t: 3.7, dur: 1.2 });
+  add(R(X(644), 640, X(676), 630), { w: 1.3, t: 4.0, dur: 0.6 });
+  add(R(X(636), 232, X(684), 218), { w: 1.4, t: 5.0, dur: 0.7 });
+});
+// Sockel durchgehend, Gesimse über den Seitenachsen
+add(L(640, 640, 960, 640), { w: 1.3, t: 3.2, dur: 1.2 });
+
+// Der große Bogen: Bogenlaibung, Öffnung, Glasfläche
+add(arch(800, 244, 640, 238), { w: 2.2, t: 4.2, dur: 2.2 });
+add(arch(800, 220, 640, 250), { w: 2.2, t: 4.5, dur: 2.2 });
+add(arch(800, 196, 560, 262), { w: 1.6, t: 5.2, dur: 2.0 });
+add(L(702, 560, 898, 560), { w: 1.6, t: 5.2, dur: 0.8 });
+add(L(702, 566, 898, 566), { w: 1, op: 0.6, t: 5.3, dur: 0.8 });
+// Schlussstein
+add(poly(788, 232, 812, 232, 807, 256, 793, 256), { w: 1.4, t: 6.4, dur: 0.6 });
+// Sprossen (senkrecht, waagerecht) und Strahlen im Bogenfeld
+{
+  let d = '';
+  for (let x = 702; x <= 898; x += 28) d += `M${x} 560V398`;
+  add(d, { w: 1, op: 0.75, t: 5.8, dur: 2.0 });
+  d = '';
+  [520, 480, 440, 400].forEach((y) => (d += `M702 ${y}H898`));
+  add(d, { w: 1, op: 0.75, t: 6.3, dur: 1.6 });
+  d = '';
+  for (let a = 15; a <= 165; a += 15) {
+    const r = (a * Math.PI) / 180;
+    d += `M${f(800 + 40 * Math.cos(r))} ${f(360 - 40 * Math.sin(r))}L${f(800 + 96 * Math.cos(r))} ${f(360 - 96 * Math.sin(r))}`;
+  }
+  add(d, { w: 1, op: 0.75, t: 6.8, dur: 1.6 });
+}
+// Die Uhr im Bogenfeld
+add(circ(800, 360, 34), { w: 1.8, t: 7.4, dur: 1.0 });
+add(circ(800, 360, 30), { w: 1, t: 7.5, dur: 1.0 });
+{
+  let d = '';
+  for (let k = 0; k < 12; k++) {
+    const r = (k * Math.PI) / 6;
+    d += `M${f(800 + 24 * Math.cos(r))} ${f(360 + 24 * Math.sin(r))}L${f(800 + 29 * Math.cos(r))} ${f(360 + 29 * Math.sin(r))}`;
+  }
+  add(d, { w: 1.2, t: 7.8, dur: 0.8 });
+  add(L(800, 360, 820.8, 348), { w: 1.8, t: 20.6, dur: 0.5 }); // Minutenzeiger
+  add(L(800, 360, 788, 353), { w: 2.2, t: 20.4, dur: 0.5 }); // Stundenzeiger
+}
+// Die drei Tore
+add(R(752, 640, 768, 560), { w: 1.6, t: 6.0, dur: 0.9 });
+add(R(832, 640, 848, 560), { w: 1.6, t: 6.1, dur: 0.9 });
+[[696, 746], [774, 826], [854, 904]].forEach(([x1, x2], i) => {
+  const cx = (x1 + x2) / 2;
+  add(R(x1, 636, x2, 576), { w: 1.4, t: 6.6 + i * 0.25, dur: 1.0 });
+  add(L(cx, 636, cx, 576) + L(x1, 596, x2, 596) + L(cx - 6, 612, cx - 6, 622) + L(cx + 6, 612, cx + 6, 622), { w: 1, op: 0.8, t: 7.0 + i * 0.25, dur: 0.8 });
+});
+add(L(690, 640, 910, 640), { w: 1.3, t: 6.2, dur: 0.9 });
+
+// ---- Mittelbau: die beiden Seitenachsen -------------------------------------
+sym((X) => {
+  add(arch(X(590), 46, 632, 560), { w: 1.5, t: 7.2, dur: 1.0 });
+  add(arch(X(590), 46, 540, 380), { w: 1.5, t: 7.4, dur: 1.4 });
+  add(arch(X(590), 34, 540, 392) + L(X(590), 540, X(590), 409) + L(X(573), 470, X(607), 470), { w: 1, op: 0.8, t: 7.8, dur: 1.2 });
+  add(L(X(540), 552, X(640), 552) + L(X(540), 547, X(640), 547), { w: 1.2, t: 7.0, dur: 0.9 });
+  [582, 594, 606, 618, 630].forEach((y) => {
+    add(L(X(540), y, X(567), y) + L(X(613), y, X(640), y), { w: 0.8, op: 0.4, t: 7.6, dur: 0.8 });
+  });
+  // Gesims und Balustrade
+  add(L(X(533), 330, X(640), 330) + L(X(533), 324, X(640), 324) + L(X(535), 318, X(640), 318), { w: 1.3, t: 8.4, dur: 1.0 });
+  add(L(X(540), 306, X(640), 306) + ticks(Math.min(X(546), X(634)), Math.max(X(546), X(634)), 318, 306, 8), { w: 1, op: 0.8, t: 8.8, dur: 1.0 });
+});
+
+// ---- Krone über dem Bogen: Gesims, Fries, Zähne ----------------------------
+add(L(630, 205, 970, 205) + L(630, 199, 970, 199), { w: 1.6, t: 8.0, dur: 1.4 });
+add(ticks(646, 954, 205, 213, 8), { w: 1, op: 0.7, t: 8.4, dur: 1.6 });
+add(R(760, 214, 840, 228), { w: 1.2, t: 8.8, dur: 0.8 });
+add(L(650, 193, 735, 193) + L(865, 193, 950, 193) + ticks(654, 732, 199, 193, 8) + ticks(868, 946, 199, 193, 8), { w: 1.1, t: 9.0, dur: 1.2 });
+
+// ---- Seitenflügel ----------------------------------------------------------
+const BAYS = 7, WL = 170, WR = 540, BW = (WR - WL) / BAYS;
+sym((X) => {
+  for (let i = 0; i < BAYS; i++) {
+    const cx = WL + BW * (i + 0.5);
+    const j = BAYS - 1 - i; // von innen (nahe am Mittelbau) nach außen
+    const t = 8.6 + j * 0.5;
+    add(arch(X(cx), 30, 632, 574), { w: 1.4, t, dur: 0.9 });
+    add(arch(X(cx), 28, 540, 440), { w: 1.4, t: t + 0.2, dur: 1.1 });
+    add(arch(X(cx), 20, 540, 448) + L(X(cx), 540, X(cx), 454) + L(X(cx - 14), 498, X(cx + 14), 498), { w: 0.9, op: 0.8, t: t + 0.4, dur: 0.9 });
+    // Quaderfugen im Erdgeschoss, zwischen den Fenstern
+    const nx = WL + BW * (i + 1.5);
+    if (i < BAYS - 1) [582, 594, 606, 618, 630].forEach((y) => add(L(X(cx + 15), y, X(nx - 15), y), { w: 0.8, op: 0.4, t: t + 0.5, dur: 0.6 }));
+    // Pilaster zwischen den Achsen
+    if (i < BAYS - 1) add(L(X(WL + BW * (i + 1)), 548, X(WL + BW * (i + 1)), 418), { w: 1, op: 0.7, t: t + 0.3, dur: 0.8 });
+  }
+  add(L(X(WL), G, X(WL), 412), { w: 2, t: 8.8, dur: 1.8 });
+  add(L(X(WR), 640, X(WL), 640), { w: 1.3, t: 9.0, dur: 2.2 });
+  add(L(X(WR), 646, X(WL), 646), { w: 1, op: 0.6, t: 9.1, dur: 2.2 });
+  add(L(X(WR), 566, X(WL), 566), { w: 0.8, op: 0.4, t: 9.4, dur: 2.2 });
+  add(L(X(WR), 552, X(WL), 552) + L(X(WR), 547, X(WL), 547), { w: 1.2, t: 9.4, dur: 2.2 });
+  add(L(X(WR + 6), 412, X(WL - 6), 412) + L(X(WR + 6), 406, X(WL - 6), 406) + L(X(WR + 4), 400, X(WL - 4), 400), { w: 1.4, t: 10.2, dur: 2.2 });
+  add(L(X(WR), 386, X(WL), 386) + ticks(Math.min(X(WR - 6), X(WL + 6)), Math.max(X(WR - 6), X(WL + 6)), 400, 386, 10), { w: 1, op: 0.8, t: 10.8, dur: 2.2 });
+});
+
+// ---- Eckpavillons -----------------------------------------------------------
+sym((X) => {
+  const t = 11.4;
+  add(L(X(50), G, X(50), 346), { w: 2, t, dur: 1.6 });
+  add(L(X(170), G, X(170), 346), { w: 0.01, t, dur: 0.1 });
+  add(L(X(50), 640, X(170), 640) + L(X(50), 646, X(170), 646), { w: 1.3, t: t + 0.2, dur: 0.8 });
+  // Eckquader
+  { let d = ''; for (let y = 360; y <= 630; y += 22) d += L(X(50), y, X(64), y) + L(X(170), y, X(156), y); add(d + L(X(64), 346, X(64), 640) + L(X(156), 346, X(156), 640), { w: 0.9, op: 0.55, t: t + 0.4, dur: 1.6 }); }
+  add(arch(X(110), 40, 632, 566), { w: 1.4, t: t + 0.6, dur: 0.9 });
+  add(arch(X(110), 40, 545, 392) + arch(X(110), 28, 545, 404) + L(X(110), 545, X(110), 418) + L(X(96), 480, X(124), 480), { w: 1.3, t: t + 0.8, dur: 1.4 });
+  add(L(X(50), 552, X(170), 552) + L(X(50), 547, X(170), 547), { w: 1.2, t: t + 0.6, dur: 0.8 });
+  add(L(X(44), 346, X(176), 346) + L(X(44), 340, X(176), 340) + L(X(46), 334, X(174), 334), { w: 1.4, t: t + 1.4, dur: 1.2 });
+  // Dach: unteres Mansarddach, oberes Dach, Dachgaube, Spitze
+  add(poly(44, 334, 66, 282, 154, 282, 176, 334).replace(/(\d+\.?\d*) (\d+\.?\d*)/g, (m, a, b) => `${f(X(+a))} ${b}`), { w: 1.6, t: t + 2.0, dur: 1.4 });
+  add(poly(66, 282, 84, 246, 136, 246, 154, 282).replace(/(\d+\.?\d*) (\d+\.?\d*)/g, (m, a, b) => `${f(X(+a))} ${b}`), { w: 1.6, t: t + 2.4, dur: 1.2 });
+  add(ticks(Math.min(X(76), X(144)), Math.max(X(76), X(144)), 334, 282, 12) , { w: 0.8, op: 0.4, t: t + 2.6, dur: 1.2 });
+  add(arch(X(110), 22, 326, 300) + L(X(110), 326, X(110), 311), { w: 1.1, t: t + 2.8, dur: 0.8 });
+  add(L(X(110), 246, X(110), 214) + circ(X(110), 209, 4), { w: 1.3, t: t + 3.2, dur: 0.8 });
+});
+
+// ---- Skulpturen: Atlas mit Weltkugel, rechts und links Tag und Nacht ----------
+add(R(765, 193, 835, 178) + R(775, 178, 825, 152), { w: 1.5, t: 14.6, dur: 1.4 });
+add(L(791, 152, 789, 122) + L(809, 152, 811, 122) + L(787, 122, 813, 122) + 'M787 122L785 106L795 102L805 102L815 106L813 122' + L(785, 106, 772, 72) + L(815, 106, 828, 72) + circ(800, 94, 6), { w: 1.6, t: 15.4, dur: 1.8 });
+add(circ(800, 56, 30) + ell(800, 56, 30, 7) + ell(800, 56, 12, 30) + ell(800, 56, 22, 30) + L(788, 22, 812, 90), { w: 1.4, t: 16.4, dur: 2.0 });
+sym((X) => {
+  const p = (x) => f(X(x));
+  add(
+    `M${p(706)} 176C${p(720)} 160 ${p(742)} 160 ${p(752)} 176` +
+      `M${p(752)} 176C${p(762)} 182 ${p(768)} 188 ${p(770)} 193` +
+      `M${p(714)} 176C${p(716)} 184 ${p(716)} 188 ${p(714)} 193` +
+      `M${p(706)} 193C${p(716)} 186 ${p(730)} 184 ${p(742)} 193` +
+      circ(X(700), 170, 6),
+    { w: 1.4, t: 15.6, dur: 1.6 }
+  );
+});
+
+// ---- Die Bahnsteighallen dahinter (nur das, was nicht verdeckt ist) -------------
+const hidden = (x, y) =>
+  (x > 538 && x < 1062 && y >= 316) ||
+  (x > 636 && x < 964 && y >= 191) ||
+  (x > 683 && x < 917 && y >= 158) ||
+  (x > 764 && x < 836 && y >= 24) ||
+  (x <= 540 && x >= 168 && y >= 384);
+function hall(cx, cy, rx, ry) {
+  let d = '', pen = false;
+  for (let i = 0; i <= 160; i++) {
+    const a = Math.PI + (Math.PI * i) / 160, x = cx + rx * Math.cos(a), y = cy + ry * Math.sin(a);
+    if (!hidden(x, y)) { d += (pen ? 'L' : 'M') + f(x) + ' ' + f(y); pen = true; } else pen = false;
+  }
+  return d;
+}
+function glazing(cx, cy, rxo, ryo, rxi, ryi, step) {
+  let d = '';
+  for (let x = cx - rxi + step / 2; x < cx + rxi; x += step) {
+    const yo = cy - ryo * Math.sqrt(1 - ((x - cx) / rxo) ** 2), yi = cy - ryi * Math.sqrt(1 - ((x - cx) / rxi) ** 2);
+    if (!hidden(x, yo) && !hidden(x, yi)) d += L(x, yi, x, yo);
+  }
+  return d;
+}
+add(hall(800, 330, 240, 218) + hall(800, 330, 226, 204), { w: 1.2, op: 0.55, t: 17.0, dur: 2.6 });
+add(glazing(800, 330, 240, 218, 226, 204, 30), { w: 0.8, op: 0.4, t: 17.6, dur: 2.0 });
+sym((X) => {
+  add(hall(X(380), 386, 180, 170) + hall(X(380), 386, 168, 158), { w: 1.2, op: 0.55, t: 17.8, dur: 2.2 });
+  add(glazing(X(380), 386, 180, 170, 168, 158, 24), { w: 0.8, op: 0.4, t: 18.2, dur: 1.6 });
+});
+
+// ---- Laternen und ein paar Menschen davor (Maßstab) ----------------------------
+sym((X) => {
+  add(L(X(470), 668, X(470), 566) + R(X(463), 566, X(477), 552) + L(X(470), 552, X(470), 544), { w: 1.3, t: 18.8, dur: 1.2 });
+});
+[[690, 694], [716, 701], [898, 696], [1128, 703], [376, 698]].forEach(([x, y], i) => {
+  add(circ(x, y - 31, 4) + L(x, y - 26, x, y - 12) + L(x, y - 12, x - 4, y) + L(x, y - 12, x + 4, y) + L(x - 6, y - 22, x + 6, y - 22), { w: 1.2, t: 19.2 + i * 0.25, dur: 0.9 });
+});
+
+// ---------------------------------------------------------------------------
+// Zeichnen: jede Linie wird mit der Dash-Technik "gezogen".
+// ---------------------------------------------------------------------------
+const svg = document.getElementById('art');
+const bar = document.getElementById('bar');
+const cap = document.getElementById('cap');
+const params = new URLSearchParams(location.search);
+const speed = Math.max(0.25, parseFloat(params.get('speed')) || 1);
+const freeze = params.has('t') ? parseFloat(params.get('t')) : null;
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const anims = [];
+let total = 0;
+
+for (const it of items) {
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', it.d);
+  p.style.strokeWidth = it.w;
+  p.style.opacity = it.op;
+  svg.appendChild(p);
+  const len = p.getTotalLength();
+  if (!len || len < 0.5) { p.remove(); continue; }
+  const dur = it.dur ?? Math.min(2.4, Math.max(0.5, len / 450));
+  total = Math.max(total, it.t + dur);
+  p.style.strokeDasharray = `${len + 0.5}`;
+  if (calm) { p.style.strokeDashoffset = 0; continue; }
+  anims.push(p.animate(
+    [{ strokeDashoffset: len + 0.5 }, { strokeDashoffset: 0 }],
+    { duration: (dur * 1000) / speed, delay: (it.t * 1000) / speed, fill: 'both', easing: 'cubic-bezier(.45,.05,.3,1)' }
+  ));
+}
+
+const endMs = (total * 1000) / speed;
+let barAnim = null, capTimer = 0;
+
+function play() {
+  cap.classList.remove('on');
+  clearTimeout(capTimer);
+  anims.forEach((a) => { a.currentTime = 0; a.play(); });
+  barAnim?.cancel();
+  barAnim = bar.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: endMs, easing: 'linear', fill: 'both' });
+  capTimer = setTimeout(() => cap.classList.add('on'), endMs);
+}
+
+if (calm) {
+  cap.classList.add('on');
+  bar.style.display = 'none';
+} else if (freeze !== null) {
+  // Standbild für Vorschau: ?t=8 zeigt die Zeichnung nach 8 Sekunden
+  anims.forEach((a) => { a.pause(); a.currentTime = (freeze * 1000) / speed; });
+  bar.style.display = 'none';
+  if (freeze >= total) cap.classList.add('on');
+} else {
+  play();
+}
+document.getElementById('replay').addEventListener('click', () => (calm ? null : play()));
+</script>
+</body>
+</html>

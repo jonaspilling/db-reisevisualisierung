@@ -1,6 +1,6 @@
 <script>
-  import { router, isHomePath } from "./router.svelte.js";
-  import { goTo } from "./jump.js";
+  import { router, isHomePath } from "../lib/router.svelte.js";
+  import { goTo } from "../lib/jump.js";
   import Logo from "./Logo.svelte";
 
   // "Projekt" in der Fußzeile bringt immer ganz nach oben: auf der Startseite gleitet die Seite hoch,

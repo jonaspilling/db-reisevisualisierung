@@ -6,13 +6,12 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 export default defineConfig(({ mode }) => ({
   base: './',
   // Die Einzeldatei (npm run build:portable) braucht alles in einem Skript, auch die nachgeladene Karte
-  // (und die Überschriften-Schrift, damit sie auch ohne Nachbardateien da ist)
-  build: mode === 'portable' ? { assetsInlineLimit: 400000, rollupOptions: { output: { inlineDynamicImports: true } } } : {},
+  build: mode === 'portable' ? { rollupOptions: { output: { inlineDynamicImports: true } } } : {},
   plugins: [
     svelte({
       // Die Szenen der Projekt-Seite bekommen ihre Daten einmal beim Start und behalten sie
       onwarn(warning, handler) {
-        if (warning.code === 'state_referenced_locally' && warning.filename?.includes('projekt')) return;
+        if (warning.code === 'state_referenced_locally' && warning.filename?.includes('scenes')) return;
         handler(warning);
       }
     })

@@ -1,24 +1,24 @@
 <script>
   // Die Startseite: ganz oben die Karte, darunter nahtlos die Fakten.
   import { onMount } from "svelte";
-  import "../projekt/projekt.css";
+  import "../scenes/projekt.css";
   import { buildStory } from "../lib/story.js";
   import { prefersReducedMotion, isPhone, isStill } from "../lib/scenes.js";
   import { goTo } from "../lib/jump.js";
   import { router, view, replaceHash, isHomePath } from "../lib/router.svelte.js";
-  import Hero from "../projekt/Hero.svelte";
-  import KartenScene from "../projekt/KartenScene.svelte";
-  import LineScene from "../projekt/LineScene.svelte";
-  import Earth from "../projekt/Earth.svelte";
-  import Moon from "../projekt/Moon.svelte";
-  import Time from "../projekt/Time.svelte";
-  import Walk from "../projekt/Walk.svelte";
-  import Route from "../projekt/Route.svelte";
-  import Clock from "../projekt/Clock.svelte";
-  import Longest from "../projekt/Longest.svelte";
-  import Places from "../projekt/Places.svelte";
-  import Kulissen from "../projekt/Kulissen.svelte";
-  import Outro from "../projekt/Outro.svelte";
+  import Hero from "../scenes/Hero.svelte";
+  import KartenScene from "../scenes/KartenScene.svelte";
+  import LineScene from "../scenes/LineScene.svelte";
+  import Earth from "../scenes/Earth.svelte";
+  import Moon from "../scenes/Moon.svelte";
+  import Time from "../scenes/Time.svelte";
+  import Walk from "../scenes/Walk.svelte";
+  import Route from "../scenes/Route.svelte";
+  import Clock from "../scenes/Clock.svelte";
+  import Longest from "../scenes/Longest.svelte";
+  import Places from "../scenes/Places.svelte";
+  import Kulissen from "../scenes/Kulissen.svelte";
+  import Outro from "../scenes/Outro.svelte";
 
   let { trips, stations } = $props();
 

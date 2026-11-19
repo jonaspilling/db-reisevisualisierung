@@ -1,5 +1,5 @@
 <script>
-  import { music, toggleSong, stopSong } from "./music.svelte.js";
+  import { music, toggleSong, stopSong } from "../lib/music.svelte.js";
 
   let { onMap = false } = $props();
 </script>

@@ -2,14 +2,14 @@
   import { onMount, tick } from "svelte";
   import { loadData } from "./lib/data.js";
   import { router, initRouter, isHomePath } from "./lib/router.svelte.js";
-  import Header from "./lib/Header.svelte";
-  import Footer from "./lib/Footer.svelte";
-  import MiniPlayer from "./lib/MiniPlayer.svelte";
+  import Header from "./components/Header.svelte";
+  import Footer from "./components/Footer.svelte";
+  import MiniPlayer from "./components/MiniPlayer.svelte";
   import { isPhone } from "./lib/scenes.js";
   import StatsPage from "./pages/StatsPage.svelte";
   import AboutPage from "./pages/AboutPage.svelte";
   import HomePage from "./pages/HomePage.svelte";
-  import MapPage from "./lib/LazyMapPage.svelte";
+  import MapPage from "./components/LazyMapPage.svelte";
 
   // Handy: der schwebende Sprungknopf überdeckt Text, dort gibt es stattdessen den Link im Hero
   const phoneUi = isPhone();
