@@ -321,7 +321,9 @@ function fixHeight(rec, opts) {
   }
 }
 
-export async function loadCity(key, w, kx, opts = {}) {
+// perf.chunk: Gebäude pro Portion (kleiner = ruhigere Kamerafahrt); perf.minArea: kleinere Nebengebäude (m²) weglassen
+export async function loadCity(key, w, kx, opts = {}, perf = {}) {
+  const chunk = perf.chunk || 250, minArea = perf.minArea || 0;
   const r = await fetch(`data/city/${file(key)}.json`);
   if (!r.ok) return null;
   const d = await r.json();
@@ -330,8 +332,9 @@ export async function loadCity(key, w, kx, opts = {}) {
   const buildings = [];
   let k = 0;
   for (const rec of d.b) {
-    if (++k % 250 === 0) await new Promise((r) => setTimeout(r, 0));
+    if (++k % chunk === 0) await new Promise((r) => setTimeout(r, 0));
     if (rec[0] <= 2 || rec[7].length < 6) continue;
+    if (minArea && rec[6] === 0 && Math.abs(signedArea(rec[7])) < minArea) continue; // kleine Nebengebäude (keine Bahnhofsteile)
     fixHeight(rec, opts);
     try { buildings.push(buildMesh(rec, toW)); } catch { /* kaputte Geometrie überspringen */ }
   }

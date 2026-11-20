@@ -104,6 +104,71 @@ const cam = { tx: 0, ty: 0, tz: 0, dist: 1000, pitch: 0.78, bearing: 0 };
 const view = { ...cam };
 const sway = { b: 0, p: 0 }, swayTo = { b: 0, p: 0 };
 
+// ================================================================ Leistung
+// Vier Stufen (0 = sparsam … 3 = alles). Die Stufe wird beim Start aus dem Gerät geschätzt und danach im Betrieb
+// an die gemessene Bildrate angepasst (ruckelt es, geht es eine Stufe runter; läuft es lange flüssig, wieder hoch).
+// Festlegen mit ?q=0 … ?q=3, Bildrate und Stufe anzeigen mit ?fps.
+const QUAL = [
+  // dpr: Pixeldichte der Zeichenfläche · roadMin/roadPx: kleinste Straßenklasse / Breite in px · cull: Gebäude unter dieser
+  // Größe (px) weglassen (bewegt / ruhig) · calmFaces: im ruhigen Blick alle Gebäude Fläche für Fläche · windows: 0 aus,
+  // 1 nur Bahnhof, 2 alle · roofPx: darunter nur Dachumriss · stride: Linienpunkte überspringen (nur in Bewegung)
+  { dpr: 1, roadMin: 3, roadPx: 1.6, waterEdge: false, cullBusy: 7, cullIdle: 3, calmFaces: false, windows: 0, floors: false, roofPx: 40, stride: 3, trainDetail: false, chunk: 80, minArea: 60 },
+  { dpr: 1, roadMin: 2, roadPx: 0.9, waterEdge: false, cullBusy: 4.5, cullIdle: 2, calmFaces: false, windows: 1, floors: false, roofPx: 26, stride: 2, trainDetail: true, chunk: 120, minArea: 30 },
+  { dpr: 1.5, roadMin: 0, roadPx: 0.5, waterEdge: true, cullBusy: 3, cullIdle: 1.2, calmFaces: true, windows: 2, floors: true, roofPx: 14, stride: 1, trainDetail: true, chunk: 200, minArea: 0 },
+  { dpr: 2, roadMin: 0, roadPx: 0.35, waterEdge: true, cullBusy: 3, cullIdle: 1.2, calmFaces: true, windows: 2, floors: true, roofPx: 14, stride: 1, trainDetail: true, chunk: 250, minArea: 0 },
+];
+const store = {
+  get() { try { return localStorage.getItem("bb-q"); } catch { return null; } },
+  set(v) { try { localStorage.setItem("bb-q", String(v)); } catch { /* egal */ } },
+};
+function guessQuality() {
+  const cores = navigator.hardwareConcurrency || 4, mem = navigator.deviceMemory || 4;
+  const touch = matchMedia("(pointer: coarse)").matches;
+  let q = 3;
+  if (cores <= 4 || mem <= 4 || touch) q = 2;
+  if (cores <= 2 || mem <= 2 || navigator.connection?.saveData) q = 1;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) q = Math.min(q, 2);
+  return q;
+}
+const qParams = new URLSearchParams(location.search);
+const qForced = /^[0-3]$/.test(qParams.get("q") ?? "x");
+const qSaved = store.get();
+let qLevel = qForced ? +qParams.get("q") : /^[0-3]$/.test(qSaved ?? "x") ? +qSaved : guessQuality();
+let qMax = 3; // höher nur, solange es dort nicht wieder ruckelt
+let Q = QUAL[qLevel];
+const perf = { last: 0, n: 0, sum: 0, good: 0, quiet: 0, upAt: 0, fps: 0 };
+const SHOW_FPS = qParams.has("fps");
+const curDpr = () => Math.min(devicePixelRatio || 1, Q.dpr);
+function setQuality(l) {
+  const before = curDpr();
+  qLevel = l;
+  Q = QUAL[l];
+  store.set(l);
+  perf.quiet = performance.now() + 1200; // nach dem Wechsel kurz nicht messen (Umbau der Zeichenfläche)
+  perf.n = perf.sum = perf.good = 0;
+  for (const s of stations.values()) s._sb = null;
+  if (curDpr() !== before) resize();
+  need();
+}
+// Bildzeit messen, solange durchgehend gezeichnet wird (Kamerafahrt, Ziehen); Einzelbilder zählen nicht
+function sampleFrame(now) {
+  const dt = now - perf.last;
+  perf.last = now;
+  if (dt > 0 && dt < 120) perf.fps += (1000 / dt - perf.fps) * 0.1;
+  if (qForced || !(anim || drag) || dt <= 0 || dt > 120 || now < perf.quiet) { perf.n = perf.sum = 0; return; }
+  perf.sum += dt;
+  if (++perf.n < 24) return;
+  const avg = perf.sum / perf.n;
+  perf.n = perf.sum = 0;
+  if (avg > 27 && qLevel > 0) {
+    // kurz nach einem Hochschalten wieder ruckelig: diese Stufe ist zu viel für das Gerät
+    if (perf.upAt && now - perf.upAt < 9000) qMax = qLevel - 1;
+    setQuality(qLevel - 1);
+  } else if (avg < 18.5 && qLevel < qMax) {
+    if (++perf.good >= 5) { perf.upAt = now; setQuality(qLevel + 1); }
+  } else perf.good = 0;
+}
+
 let cb, sb, cp, sp, Cy, Cz, camX, camY, camZ;
 function setup() {
   cb = Math.cos(view.bearing); sb = Math.sin(view.bearing);
@@ -156,7 +221,8 @@ function pathPoly(C) {
 function pathLine(g, z = 0, upTo = Infinity) {
   let prev = null, pen = false, lx = 0, ly = 0;
   const n = Math.min(g.length, upTo);
-  for (let i = 0; i < n; i += 2) {
+  const step = 2 * (BUSY ? Q.stride : 1); // in Bewegung auf schwachen Geräten nur jeden n-ten Punkt (letzter bleibt)
+  for (let i = 0; i < n; i = i + step >= n && i < n - 2 ? n - 2 : i + step) {
     const c = cs(g[i], g[i + 1], z);
     if (prev) {
       let a = prev, b = c;
@@ -174,7 +240,7 @@ function pathLine(g, z = 0, upTo = Infinity) {
 }
 
 function resize() {
-  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const dpr = curDpr();
   W = innerWidth; H = innerHeight;
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   cv.style.width = W + "px"; cv.style.height = H + "px";
@@ -209,7 +275,7 @@ function ensureCity(s) {
   if (s.city) return s.cityPromise;
   s.city = "loading";
   const spot = SPOT[s.key];
-  s.cityPromise = loadCity(s.key, s.w, s.kx, spot || {}).then((c) => {
+  s.cityPromise = loadCity(s.key, s.w, s.kx, spot || {}, { chunk: Q.chunk, minArea: Q.minArea }).then((c) => {
     if (!c) { s.city = "none"; return; }
     const cl = stationCluster(c, spot);
     let top = 0;
@@ -674,8 +740,8 @@ function trainItems(t, sHead, list) {
       const C = pts.map((p) => cs(p[0], p[1], p[2]));
       let d = 0;
       for (const c of C) d += c[2];
-      const lines = f.lines.map(([p, q]) => [cs(...toWorld(sf, ...p)), cs(...toWorld(sf, ...q))]);
-      const polys = (f.polys || []).map((pg) => ({ fill: pg.fill, C: pg.pts.map((p) => cs(...toWorld(sf, ...p))) }));
+      const lines = !Q.trainDetail ? [] : f.lines.map(([p, q]) => [cs(...toWorld(sf, ...p)), cs(...toWorld(sf, ...q))]);
+      const polys = !Q.trainDetail ? [] : (f.polys || []).map((pg) => ({ fill: pg.fill, C: pg.pts.map((p) => cs(...toWorld(sf, ...p))) }));
       list.push({ train: true, C, lines, polys, alpha: carAlpha, d: d / C.length });
     }
   }
@@ -877,11 +943,12 @@ function drawGround(c, a) {
       if (P.length > 2) pathPoly(P);
     }
     ctx.fill("evenodd");
-    ctx.stroke();
+    if (Q.waterEdge) ctx.stroke();
   }
   const WID = [3, 6, 9, 13, 18];
   const buckets = new Map();
   for (const l of c.road) {
+    if (l.cls < Q.roadMin) continue;
     const g = l.g, wm = WID[l.cls] || 6;
     let prev = null;
     for (let i = 0; i < g.length; i += 2) {
@@ -893,7 +960,7 @@ function drawGround(c, a) {
         const X1 = sx(A), Y1 = sy(A), X2 = sx(B), Y2 = sy(B);
         if (!((X1 < -50 && X2 < -50) || (X1 > W + 50 && X2 > W + 50) || (Y1 < -50 && Y2 < -50) || (Y1 > H + 50 && Y2 > H + 50))) {
           const px = (wm * FOC) / (((A[2] + B[2]) / 2) * 1000);
-          if (px >= 0.35) {
+          if (px >= Q.roadPx) {
             const k = clamp(Math.round(Math.log2(px) * 3), -6, 30);
             let arr = buckets.get(k);
             if (!arr) buckets.set(k, (arr = []));
@@ -985,8 +1052,8 @@ function drawFace(b, f, alpha, detail, dash) {
     const [a, bb, , d] = f.i;
     const wpx = Math.hypot(S[2 * bb] - S[2 * a], S[2 * bb + 1] - S[2 * a + 1]);
     const hpx = Math.hypot(S[2 * d] - S[2 * a], S[2 * d + 1] - S[2 * a + 1]);
-    if (wpx > 36 && hpx > 22 && f.len > 4 && f.wh > 4) drawWindows(b, f, alpha, station);
-    else if (b.floors > 1 && hpx > 10) drawFloors(b, f, alpha, station);
+    if (Q.windows && (Q.windows === 2 || station) && wpx > 36 && hpx > 22 && f.len > 4 && f.wh > 4) drawWindows(b, f, alpha, station);
+    else if (Q.floors && b.floors > 1 && hpx > 10) drawFloors(b, f, alpha, station);
   }
 }
 function drawFloors(b, f, alpha, station) {
@@ -1136,8 +1203,10 @@ function label(text, X, Y, alpha = 1) {
 
 let stationHit = [], stopHit = [];
 const pxmAtW = (w) => { const c = cs(w[0], w[1], 0); return c[2] > NEAR ? FOC / c[2] / 1000 : 0; };
+let BUSY = false;
 function frame(now) {
   raf = 0;
+  sampleFrame(now);
   stepAnim(now);
   const idle = false; // die Ansicht am Bahnhof ist fest (so bleiben alle Details stehen)
   sway.b += (swayTo.b - sway.b) * 0.06;
@@ -1146,6 +1215,7 @@ function frame(now) {
   ctx.clearRect(0, 0, W, H);
   const ppk = FOC / view.dist;
   const busy = now < busyUntil || drag || anim;
+  BUSY = !!busy;
 
   const near = [];
   for (const s of stations.values()) {
@@ -1168,7 +1238,7 @@ function frame(now) {
   // Gebäude: der Bahnhof immer Fläche für Fläche; im ruhigen Blick am Bahnhof auch die ganze Stadt
   // (sauberste Überdeckung, wird nur einmal gezeichnet)
   const list = [];
-  const calm = mode === "stand" && !anim && (now - reveal.t0) / 1000 > 3.2;
+  const calm = Q.calmFaces && mode === "stand" && !anim && (now - reveal.t0) / 1000 > 3.2;
   for (const { s, a } of near) {
     const rv = reveal.s === s ? (now - reveal.t0) / 1000 : 99;
     for (const b of s.city.buildings) {
@@ -1179,7 +1249,7 @@ function frame(now) {
       if (c[2] > NEAR) {
         const X = sx(c), Y = sy(c), pr = (r * FOC) / c[2];
         if (X + pr < 0 || X - pr > W || Y + pr < 0 || Y - pr > H) continue;
-        if (pr < (busy ? 3 : 1.2) && !b.station) continue;
+        if (pr < (busy ? Q.cullBusy : Q.cullIdle) && !b.station) continue;
         px = (Math.sqrt(b.area) * FOC) / (c[2] * 1000);
       }
       const dl = Math.hypot(b.lc[0], b.lc[1]);
@@ -1212,7 +1282,7 @@ function frame(now) {
     const b = it.b;
     if (b.station) hit.add(b);
     if (it.f) { drawFace(b, it.f, it.a, !busy && it.px > 40, it.dash); continue; }
-    if (it.px < 14 && !b.station && !it.dash) drawRoofOnly(b, it.a);
+    if (it.px < Q.roofPx && !b.station && !it.dash) drawRoofOnly(b, it.a);
     else for (const f of b.F) if (facing(b, f)) drawFace(b, f, it.a, !busy && it.px > 60, it.dash);
   }
   stationHit = [...hit];
@@ -1248,6 +1318,14 @@ function frame(now) {
 
   liveTicket();
   if (GRID) drawGrid();
+  if (SHOW_FPS) {
+    ctx.globalAlpha = 1;
+    ctx.font = "11px ui-monospace, monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#c00";
+    ctx.fillText(`Stufe ${qLevel}${qForced ? " (fest)" : ""} · ${Math.round(perf.fps)} fps · dpr ${curDpr()}`, 12, H - 22);
+  }
   if (anim || idle || (mode === "map" && introP() < 1) || Math.abs(swayTo.b - sway.b) > 1e-4 || Math.abs(swayTo.p - sway.p) > 1e-4) need();
 }
 
