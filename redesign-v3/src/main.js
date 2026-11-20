@@ -111,11 +111,12 @@ const sway = { b: 0, p: 0 }, swayTo = { b: 0, p: 0 };
 const QUAL = [
   // dpr: Pixeldichte der Zeichenfläche · roadMin/roadPx: kleinste Straßenklasse / Breite in px · cull: Gebäude unter dieser
   // Größe (px) weglassen (bewegt / ruhig) · calmFaces: im ruhigen Blick alle Gebäude Fläche für Fläche · windows: 0 aus,
-  // 1 nur Bahnhof, 2 alle · roofPx: darunter nur Dachumriss · stride: Linienpunkte überspringen (nur in Bewegung)
-  { dpr: 1, roadMin: 3, roadPx: 1.6, waterEdge: false, cullBusy: 7, cullIdle: 3, calmFaces: false, windows: 0, floors: false, roofPx: 40, stride: 3, trainDetail: false, chunk: 80, minArea: 60 },
-  { dpr: 1, roadMin: 2, roadPx: 0.9, waterEdge: false, cullBusy: 4.5, cullIdle: 2, calmFaces: false, windows: 1, floors: false, roofPx: 26, stride: 2, trainDetail: true, chunk: 120, minArea: 30 },
-  { dpr: 1.5, roadMin: 0, roadPx: 0.5, waterEdge: true, cullBusy: 3, cullIdle: 1.2, calmFaces: true, windows: 2, floors: true, roofPx: 14, stride: 1, trainDetail: true, chunk: 200, minArea: 0 },
-  { dpr: 2, roadMin: 0, roadPx: 0.35, waterEdge: true, cullBusy: 3, cullIdle: 1.2, calmFaces: true, windows: 2, floors: true, roofPx: 14, stride: 1, trainDetail: true, chunk: 250, minArea: 0 },
+  // 1 nur Bahnhof, 2 alle · roofPx: darunter nur Dachumriss · stride: Linienpunkte überspringen (nur in Bewegung) ·
+  // maxBusy: höchstens so viele Nebengebäude pro Bild während Kamerafahrten (die größten bleiben)
+  { dpr: 1, roadMin: 3, roadPx: 1.6, waterEdge: false, cullBusy: 7, cullIdle: 3, calmFaces: false, windows: 0, floors: false, roofPx: 40, stride: 3, trainDetail: false, chunk: 80, minArea: 60, maxBusy: 250 },
+  { dpr: 1, roadMin: 2, roadPx: 0.9, waterEdge: false, cullBusy: 4.5, cullIdle: 2, calmFaces: false, windows: 1, floors: false, roofPx: 26, stride: 2, trainDetail: true, chunk: 120, minArea: 30, maxBusy: 500 },
+  { dpr: 1.5, roadMin: 0, roadPx: 0.5, waterEdge: true, cullBusy: 3, cullIdle: 1.2, calmFaces: true, windows: 2, floors: true, roofPx: 14, stride: 1, trainDetail: true, chunk: 200, minArea: 0, maxBusy: 900 },
+  { dpr: 2, roadMin: 0, roadPx: 0.35, waterEdge: true, cullBusy: 3, cullIdle: 1.2, calmFaces: true, windows: 2, floors: true, roofPx: 14, stride: 1, trainDetail: true, chunk: 250, minArea: 0, maxBusy: 1600 },
 ];
 const store = {
   get() { try { return localStorage.getItem("bb-q"); } catch { return null; } },
@@ -592,6 +593,13 @@ let hoverTrip = -1;
 const GAPF = 0.012;
 const barPos = [];
 trips.forEach((t, i) => { barPos.push(Math.max(doy(t) / 365, i ? barPos[i - 1] + GAPF : 0)); });
+function setHover(i) {
+  if (hoverTrip === i) return;
+  hoverTrip = i;
+  ycap.innerHTML = i >= 0 ? tripCap(trips[i]) : defaultCap();
+  yearUI();
+  need();
+}
 const bars = trips.map((t, i) => {
   const b = document.createElement("button");
   b.type = "button";
@@ -602,16 +610,22 @@ const bars = trips.map((t, i) => {
   b.style.height = "46px";
   b.style.setProperty("--h", `${6 + 38 * (t.km / maxKm)}px`);
   b.setAttribute("aria-label", `${t.p.datum}: ${nice(t.p.start)} nach ${nice(t.p.ziel)}, ${nf(t.km)} km`);
-  const over = () => { hoverTrip = i; ycap.innerHTML = tripCap(t); yearUI(); need(); };
-  const out = () => { if (hoverTrip === i) { hoverTrip = -1; ycap.innerHTML = defaultCap(); yearUI(); need(); } };
-  b.addEventListener("pointerenter", over);
-  b.addEventListener("focus", over);
-  b.addEventListener("pointerleave", out);
-  b.addEventListener("blur", out);
-  b.addEventListener("click", () => playTrip(i));
+  // Tastatur: Fokus zeigt die Fahrt, Enter wählt sie (Maus und Finger laufen über die ganze Leiste, siehe unten)
+  b.addEventListener("focus", () => setHover(i));
+  b.addEventListener("blur", () => { if (hoverTrip === i) setHover(-1); });
   ytrack.appendChild(b);
   return b;
 });
+// Maus und Finger: die ganze Leiste ist die Fläche, es zählt die nächste Fahrt (kein genaues Treffen der dünnen Striche)
+const nearestTrip = (e) => {
+  const r = ytrack.getBoundingClientRect(), x = (e.clientX - r.left) / r.width;
+  let best = 0, bd = Infinity;
+  barPos.forEach((p, i) => { const d = Math.abs(p - x); if (d < bd) { bd = d; best = i; } });
+  return best;
+};
+ytrack.addEventListener("pointermove", (e) => setHover(nearestTrip(e)));
+ytrack.addEventListener("pointerleave", () => setHover(-1));
+ytrack.addEventListener("click", (e) => playTrip(e.detail === 0 && e.target.classList.contains("y-bar") ? bars.indexOf(e.target) : nearestTrip(e)));
 function tripCap(t) {
   return `<b>${t.p.datum.slice(0, 6)} ${nice(t.p.start)} → ${nice(t.p.ziel)}</b> · ${nf(t.km)} km · ${hm(t.minutes)} · ${t.p.zuege}`;
 }
@@ -929,12 +943,29 @@ function drawStops(ppk) {
   return out;
 }
 
+// Umgrenzungsrahmen einer Linie (einmal berechnet) und grobe Sichtprüfung, bevor Punkte einzeln umgerechnet werden
+function bboxOf(g) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < g.length; i += 2) { x0 = Math.min(x0, g[i]); x1 = Math.max(x1, g[i]); y0 = Math.min(y0, g[i + 1]); y1 = Math.max(y1, g[i + 1]); }
+  return [x0, y0, x1, y1];
+}
+// liefert null (außerhalb des Bildes) oder die kleinste mögliche Tiefe des Rahmens (größte mögliche Pixelgröße)
+function boxDepth(bb) {
+  const rad = Math.hypot(bb[2] - bb[0], bb[3] - bb[1]) / 2;
+  const c = cs((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2, 0);
+  const dmin = c[2] - rad;
+  if (dmin < NEAR) return NEAR;
+  const X = sx(c), Y = sy(c), pr = (rad * FOC) / dmin + 50;
+  return X + pr < 0 || X - pr > W || Y + pr < 0 || Y - pr > H ? null : dmin;
+}
 function drawGround(c, a) {
   ctx.globalAlpha = a;
   ctx.fillStyle = "#f1f1f1";
   ctx.strokeStyle = "#d4d4d4";
   ctx.lineWidth = 0.7;
   for (const rings of c.wa) {
+    rings.bb ||= bboxOf(rings[0]);
+    if (boxDepth(rings.bb) === null) continue;
     ctx.beginPath();
     for (const g of rings) {
       const C = [];
@@ -950,6 +981,8 @@ function drawGround(c, a) {
   for (const l of c.road) {
     if (l.cls < Q.roadMin) continue;
     const g = l.g, wm = WID[l.cls] || 6;
+    const dmin = boxDepth(l.bb ||= bboxOf(g));
+    if (dmin === null || (wm * FOC) / (dmin * 1000) < Q.roadPx) continue; // außerhalb oder selbst nah dran zu schmal
     let prev = null;
     for (let i = 0; i < g.length; i += 2) {
       const p = cs(g[i], g[i + 1], 0);
@@ -982,7 +1015,7 @@ function drawGround(c, a) {
   ctx.strokeStyle = "#a3a3a3";
   ctx.lineWidth = 0.6;
   ctx.beginPath();
-  for (const l of c.rail) pathLine(l.g);
+  for (const l of c.rail) if (boxDepth(l.bb ||= bboxOf(l.g)) !== null) pathLine(l.g);
   ctx.stroke();
   ctx.globalAlpha = 1;
 }
@@ -1201,6 +1234,80 @@ function label(text, X, Y, alpha = 1) {
   ctx.globalAlpha = 1;
 }
 
+// ---------- Zeichenreihenfolge nach Grundriss ----------
+// Konvexe Hülle des Grundrisses (lokale Meter), einmal je Gebäude
+function hullOf(b) {
+  if (b._hull) return b._hull;
+  const p = b.lo, pts = [];
+  for (let i = 0; i < p.length; i += 2) pts.push([p[i], p[i + 1]]);
+  pts.sort((a, c) => a[0] - c[0] || a[1] - c[1]);
+  const cr = (o, a, c) => (a[0] - o[0]) * (c[1] - o[1]) - (a[1] - o[1]) * (c[0] - o[0]);
+  const lo = [], up = [];
+  for (const q of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (let i = pts.length - 1; i >= 0; i--) { const q = pts[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  lo.pop(); up.pop();
+  return (b._hull = lo.concat(up));
+}
+// Trennt eine Kante von H alle Punkte von G ab? Dann +1, wenn die Kamera auf der Seite von H liegt, sonst -1; 0 = nein
+function sepSide(H, G, cx, cy) {
+  if (H.length < 3) return 0;
+  for (let i = 0; i < H.length; i++) {
+    const a = H[i], c = H[(i + 1) % H.length];
+    const ex = c[0] - a[0], ey = c[1] - a[1], len = Math.hypot(ex, ey);
+    if (len < 1e-6) continue;
+    let ok = true;
+    for (const q of G) if (ex * (q[1] - a[1]) - ey * (q[0] - a[0]) > 0.08 * len) { ok = false; break; }
+    if (ok) return ex * (cy - a[1]) - ey * (cx - a[0]) > 0 ? 1 : -1;
+  }
+  return 0;
+}
+// Gebäude, die sich in der Draufsicht nicht überlappen, haben eine eindeutige Reihenfolge (das der Kamera nähere
+// kommt später); überlappende (Hallen mit Anbauten, Bauteile) bleiben eine Gruppe und werden Fläche für Fläche nach
+// Tiefe sortiert. Die Gruppen werden dann topologisch geordnet, sonst nach Tiefe (wie bisher).
+function orderByFootprint(list) {
+  const bs = [], idx = new Map();
+  for (const it of list) if (!idx.has(it.b)) { idx.set(it.b, bs.length); bs.push(it.b); }
+  const n = bs.length, parent = Array.from({ length: n }, (_, i) => i);
+  const find = (i) => { while (parent[i] !== i) i = parent[i] = parent[parent[i]]; return i; };
+  const cell = 160, grid = new Map();
+  bs.forEach((b, i) => {
+    if (!b._bb) return;
+    const [x0, y0, x1, y1] = b._bb;
+    const gx0 = Math.floor(clamp(x0, -400, W + 400) / cell), gx1 = Math.floor(clamp(x1, -400, W + 400) / cell);
+    const gy0 = Math.floor(clamp(y0, -400, H + 400) / cell), gy1 = Math.floor(clamp(y1, -400, H + 400) / cell);
+    for (let gx = gx0; gx <= gx1; gx++) for (let gy = gy0; gy <= gy1; gy++) { const k = gx * 4099 + gy; (grid.get(k) || grid.set(k, []).get(k)).push(i); }
+  });
+  const seen = new Set(), edges = []; // [vorn, hinten]
+  for (const cellList of grid.values())
+    for (let a = 0; a < cellList.length; a++)
+      for (let c = a + 1; c < cellList.length; c++) {
+        const i = Math.min(cellList[a], cellList[c]), j = Math.max(cellList[a], cellList[c]), key = i * n + j;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const A = bs[i], B = bs[j];
+        if (A._city !== B._city || A._bb[2] < B._bb[0] || B._bb[2] < A._bb[0] || A._bb[3] < B._bb[1] || B._bb[3] < A._bb[1]) continue;
+        const s = A._city, cx = ((camX - s.w[0]) * 1000) / s.kx, cy = (camY - s.w[1]) * 1000;
+        const HA = hullOf(A), HB = hullOf(B);
+        const r = sepSide(HA, HB, cx, cy) || -sepSide(HB, HA, cx, cy);
+        if (r === 0) parent[find(i)] = find(j);
+        else edges.push(r > 0 ? [i, j] : [j, i]);
+      }
+  const deps = new Map(), gd = new Map(), gn = new Map();
+  for (let i = 0; i < n; i++) { const g = find(i); gd.set(g, (gd.get(g) || 0) + bs[i]._dc); gn.set(g, (gn.get(g) || 0) + 1); }
+  for (const [f, k] of edges) { const gf = find(f), gk = find(k); if (gf !== gk) (deps.get(gf) || deps.set(gf, []).get(gf)).push(gk); }
+  const groups = [...gd.keys()].sort((p, q) => gd.get(q) / gn.get(q) - gd.get(p) / gn.get(p)); // fern zuerst
+  const rank = new Map(), state = new Set();
+  const visit = (g) => {
+    if (state.has(g)) return;
+    state.add(g);
+    for (const d of deps.get(g) || []) visit(d); // was hinter g liegt, wird zuerst gezeichnet
+    rank.set(g, rank.size);
+  };
+  for (const g of groups) visit(g);
+  for (const it of list) it._r = rank.get(find(idx.get(it.b)));
+  list.sort((p, q) => p._r - q._r || q.d - p.d);
+}
+
 let stationHit = [], stopHit = [];
 const pxmAtW = (w) => { const c = cs(w[0], w[1], 0); return c[2] > NEAR ? FOC / c[2] / 1000 : 0; };
 let BUSY = false;
@@ -1238,7 +1345,8 @@ function frame(now) {
   // Gebäude: der Bahnhof immer Fläche für Fläche; im ruhigen Blick am Bahnhof auch die ganze Stadt
   // (sauberste Überdeckung, wird nur einmal gezeichnet)
   const list = [];
-  const calm = Q.calmFaces && mode === "stand" && !anim && (now - reveal.t0) / 1000 > 3.2;
+  const settled = mode === "stand" && !anim && (now - reveal.t0) / 1000 > 3.2;
+  const calm = Q.calmFaces && settled;
   for (const { s, a } of near) {
     const rv = reveal.s === s ? (now - reveal.t0) / 1000 : 99;
     for (const b of s.city.buildings) {
@@ -1261,6 +1369,9 @@ function frame(now) {
         if (b.station && k < 1) dash = [k * 400, 400];
       }
       projectB(b);
+      b._city = s;
+      b._dc = c[2];
+      b._bb = c[2] > NEAR ? [sx(c) - (r * FOC) / c[2], sy(c) - (r * FOC) / c[2], sx(c) + (r * FOC) / c[2], sy(c) + (r * FOC) / c[2]] : null;
       if ((b.station || calm) && px > 8) {
         for (const f of b.F) {
           if (!facing(b, f)) continue;
@@ -1271,12 +1382,19 @@ function frame(now) {
       } else list.push({ b, d: c[2], a: ba, dash, px });
     }
   }
+  if (busy && list.length > Q.maxBusy) {
+    const px = list.filter((it) => !it.b.station).map((it) => it.px).sort((p, q) => q - p);
+    const min = px[Q.maxBusy] ?? 0;
+    if (px.length > Q.maxBusy) for (let i = list.length - 1; i >= 0; i--) if (!list[i].b.station && list[i].px <= min) list.splice(i, 1);
+  }
   // Der Zug wird nach allen Gebäuden gezeichnet (eigene Sortierung): so schneidet er nicht halb in Häuser
   // hinein, deren Mittelpunkt zufällig näher liegt; er bleibt immer ganz sichtbar
   const trainList = [];
   if (anim && anim.trip && anim.train != null) trainItems(anim.trip, anim.train, trainList);
   trainList.sort((p, q) => q.d - p.d);
-  list.sort((p, q) => q.d - p.d);
+  // Ruhiger Blick am Bahnhof: Gebäude nach ihrem Grundriss ordnen (statt nur nach Mittelpunkt-Tiefe), sonst schneiden
+  // lange Häuser und Hallen scheinbar ineinander
+  if (settled && !qParams.has("oldsort")) orderByFootprint(list); else list.sort((p, q) => q.d - p.d);
   const hit = new Set();
   for (const it of list) {
     const b = it.b;
@@ -1370,9 +1488,8 @@ cv.addEventListener("pointerdown", (e) => {
   cv.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, [e.clientX, e.clientY]);
   const alt = e.button === 2 || e.shiftKey || e.ctrlKey;
-  // am Bahnhof ist die Kamera fest: dort zählt nur der Klick
-  if (mode !== "map") drag = { mode: "click", x: e.clientX, y: e.clientY, moved: 0 };
-  else if (pointers.size === 1) drag = { mode: alt ? "rotate" : "pan", x: e.clientX, y: e.clientY, moved: 0 };
+  // Die Kamera ist festgestellt (am Bahnhof wie auf der Übersichtskarte): Klick wählt, die Karte lässt sich nur zoomen
+  if (pointers.size === 1 || mode !== "map") drag = { mode: "click", x: e.clientX, y: e.clientY, moved: 0 };
   else drag = { mode: "pinch", ...pinchState() };
   // das langsame Drehen in die Kamera übernehmen, damit nichts springt
   cam.bearing += sway.b; sway.b = swayTo.b = 0;
@@ -1399,13 +1516,12 @@ cv.addEventListener("pointermove", (e) => {
     poke(); need();
   } else if (drag && drag.mode === "pinch" && pointers.size === 2) {
     const s = pinchState();
-    zoomAt(s.mx, s.my, drag.dist / s.dist);
-    cam.bearing -= s.ang - drag.ang;
+    zoomAt(s.mx, s.my, drag.dist / s.dist); // nur Zoom, kein Verschieben oder Drehen
     Object.assign(drag, s);
     poke(); need();
   } else if (!drag && !anim) {
     const h = pickStation(e.clientX, e.clientY);
-    cv.style.cursor = h ? "pointer" : "grab";
+    cv.style.cursor = h ? "pointer" : "default";
     el.tip.hidden = !h;
     if (h) {
       const t = trips[leg];
@@ -1424,7 +1540,7 @@ function endPointer(e) {
     else if (h && h.kind === "stop" && mode === "map" && h.s.terminal) fromMap(h.s);
   }
   const rest = [...pointers.values()];
-  drag = rest.length === 1 ? { mode: "pan", x: rest[0][0], y: rest[0][1], moved: 99 } : null;
+  drag = rest.length === 1 ? { mode: "click", x: rest[0][0], y: rest[0][1], moved: 99 } : null;
   if (!drag) { lastInput = performance.now(); need(); }
 }
 cv.addEventListener("pointerup", endPointer);
@@ -1454,23 +1570,38 @@ function pickStation(X, Y) {
   return null;
 }
 function zoomAt(X, Y, factor) {
-  const a = unproject(X, Y);
-  cam.dist = clamp(cam.dist * factor, mode === "map" ? 0.3 : 0.06, mode === "map" ? 4000 : 1.5);
+  // Übersicht: nicht weiter hinaus als das ganze Jahr, Zoom immer um die Bildmitte (die Karte wandert nicht)
+  cam.dist = clamp(cam.dist * factor, mode === "map" ? 0.3 : 0.06, mode === "map" ? overviewView().dist : 1.5);
   applyView();
-  const b = unproject(X, Y);
-  if (a && b && mode === "map") { cam.tx += a[0] - b[0]; cam.ty += a[1] - b[1]; }
 }
 cv.addEventListener("wheel", (e) => {
   e.preventDefault();
   if (anim || mode !== "map") return;
-  zoomAt(e.clientX, e.clientY, Math.exp(e.deltaY * (e.deltaMode ? 0.05 : 0.0015)));
+  // Trackpad-Pinch kommt als Mausrad mit gedrückter Strg-Taste und kleinen Werten: stärker gewichten
+  zoomAt(e.clientX, e.clientY, Math.exp(e.deltaY * (e.deltaMode ? 0.05 : e.ctrlKey ? 0.01 : 0.0015)));
   poke(); need();
 }, { passive: false });
+// Safari meldet die Pinch-Geste am Trackpad als eigene Ereignisse (sonst zoomt dort die ganze Seite)
+let gScale = 1;
+cv.addEventListener("gesturestart", (e) => { e.preventDefault(); gScale = 1; });
+cv.addEventListener("gesturechange", (e) => {
+  e.preventDefault();
+  if (anim || mode !== "map") return;
+  zoomAt(e.clientX, e.clientY, gScale / e.scale);
+  gScale = e.scale;
+  poke(); need();
+});
+cv.addEventListener("gestureend", (e) => e.preventDefault());
 
 addEventListener("resize", resize);
 addEventListener("keydown", (e) => {
   if ((e.key === "Enter" || e.key === " ") && mode === "stand" && document.activeElement === document.body) { e.preventDefault(); goAction && goAction(); }
   if (e.key === "Escape" && mode === "map") fromMap();
+  // Pfeiltasten: vorige / nächste Fahrt (am Bahnhof)
+  if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && mode === "stand" && !anim && document.activeElement === document.body) {
+    e.preventDefault();
+    playTrip(clamp(leg + (e.key === "ArrowRight" ? 1 : -1), 0, trips.length - 1));
+  }
 });
 
 // ================================================================ Start

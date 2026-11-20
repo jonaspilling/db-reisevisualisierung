@@ -321,38 +321,91 @@ function fixHeight(rec, opts) {
   }
 }
 
+// Stadtdatei laden: wenn möglich in einem Worker (Parsen blockiert dort nicht die Kamerafahrt), sonst im Hauptthread.
+// Liefert die Teile ("b", "road", "rail", "water", "wa") portionsweise an on(part, daten).
+let worker, wid = 0;
+const waiting = new Map();
+function getWorker() {
+  if (worker !== undefined) return worker;
+  try {
+    worker = new Worker(new URL("./city-worker.js", import.meta.url), { type: "module" });
+    worker.onmessage = ({ data }) => waiting.get(data.id)?.(data);
+    worker.onerror = () => { worker = null; for (const f of waiting.values()) f({ type: "error" }); };
+  } catch { worker = null; }
+  return worker;
+}
+async function fetchCity(key, batch, on) {
+  const url = `data/city/${file(key)}.json`;
+  const wk = getWorker();
+  if (wk) {
+    const id = ++wid;
+    const ok = await new Promise((res) => {
+      waiting.set(id, (m) => {
+        if (m.type === "none") { waiting.delete(id); res(false); }
+        else if (m.type === "error") { waiting.delete(id); res(null); }
+        else if (m.type === "end") { waiting.delete(id); res(true); }
+        else on(m.type, m.v);
+      });
+      wk.postMessage({ id, url: new URL(url, document.baseURI).href, batch }); // im Worker zählt sonst src/ als Basis
+    });
+    if (ok !== null) return ok;
+    // Worker nicht nutzbar: Teile verwerfen und im Hauptthread laden
+  }
+  const r = await fetch(url);
+  if (!r.ok) return false;
+  const d = await r.json();
+  for (const part of ["b", "road", "rail", "water", "wa"]) on(part, d[part] || []);
+  return true;
+}
+
 // perf.chunk: Gebäude pro Portion (kleiner = ruhigere Kamerafahrt); perf.minArea: kleinere Nebengebäude (m²) weglassen
 export async function loadCity(key, w, kx, opts = {}, perf = {}) {
   const chunk = perf.chunk || 250, minArea = perf.minArea || 0;
-  const r = await fetch(`data/city/${file(key)}.json`);
-  if (!r.ok) return null;
-  const d = await r.json();
   const toW = (x, y) => [w[0] + (x / 1000) * kx, w[1] + y / 1000];
-  // Netze in Portionen bauen, damit laufende Kamerafahrten nicht stocken
-  const buildings = [];
-  let k = 0;
-  for (const rec of d.b) {
-    if (++k % chunk === 0) await new Promise((r) => setTimeout(r, 0));
-    if (rec[0] <= 2 || rec[7].length < 6) continue;
-    if (minArea && rec[6] === 0 && Math.abs(signedArea(rec[7])) < minArea) continue; // kleine Nebengebäude (keine Bahnhofsteile)
-    fixHeight(rec, opts);
-    try { buildings.push(buildMesh(rec, toW)); } catch { /* kaputte Geometrie überspringen */ }
-  }
-  const lines = (arr, off = 0) =>
-    arr.map((l) => {
-      const m = (l.length - off) / 2, g = new Float64Array(m * 2);
-      for (let i = 0; i < m; i++) {
-        const [X, Y] = toW(l[off + 2 * i], l[off + 2 * i + 1]);
-        g[2 * i] = X; g[2 * i + 1] = Y;
+  const pts = (arr, off = 0) => {
+    const m = (arr.length - off) / 2, g = new Float64Array(m * 2);
+    for (let i = 0; i < m; i++) {
+      const [X, Y] = toW(arr[off + 2 * i], arr[off + 2 * i + 1]);
+      g[2 * i] = X; g[2 * i + 1] = Y;
+    }
+    return g;
+  };
+  const out = { buildings: [], road: [], rail: [], water: [], wa: [], toW };
+  // Arbeit in Zeitscheiben von ca. 4 ms: danach gibt der Aufbau die Hand ab, damit zwischen den Bildern nie lange
+  // gerechnet wird (feste Gebäudezahlen pro Portion wurden bei großen Städten zu langen Pausen)
+  const todo = [];
+  let wake = null;
+  const done = fetchCity(key, chunk, (part, v) => { todo.push([part, v]); wake?.(); });
+  let t0 = performance.now();
+  const slice = async () => { if (performance.now() - t0 > 4) { await yieldNow(); t0 = performance.now(); } };
+  const work = async () => {
+    for (;;) {
+      const item = todo.shift();
+      if (!item) {
+        if (await Promise.race([done.then(() => true), new Promise((r) => (wake = () => r(false)))])) { if (!todo.length) return; }
+        continue;
       }
-      return { g, cls: off ? l[0] : 0 };
-    });
-  const areas = (d.wa || []).map(([o, hs]) => {
-    const conv = (ring) => { const m = ring.length / 2, g = new Float64Array(m * 2); for (let i = 0; i < m; i++) { const [X, Y] = toW(ring[2 * i], ring[2 * i + 1]); g[2 * i] = X; g[2 * i + 1] = Y; } return g; };
-    return [conv(o), ...hs.map(conv)];
-  });
-  return { axis: d.axis, r: d.r, buildings, raw: d, road: lines(d.road, 1), rail: lines(d.rail), water: lines(d.water), wa: areas, toW };
+      const [part, v] = item;
+      if (part === "b") {
+        for (const rec of v) {
+          await slice();
+          if (rec[0] <= 2 || rec[7].length < 6) continue;
+          if (minArea && rec[6] === 0 && Math.abs(signedArea(rec[7])) < minArea) continue; // kleine Nebengebäude (keine Bahnhofsteile)
+          fixHeight(rec, opts);
+          try { out.buildings.push(buildMesh(rec, toW)); } catch { /* kaputte Geometrie überspringen */ }
+        }
+      } else if (part === "road") for (const l of v) { await slice(); out.road.push({ g: pts(l, 1), cls: l[0] }); }
+      else if (part === "rail" || part === "water") for (const l of v) { await slice(); out[part].push({ g: pts(l), cls: 0 }); }
+      else if (part === "wa") for (const [o, hs] of v) { await slice(); out.wa.push([pts(o), ...hs.map((h) => pts(h))]); }
+    }
+  };
+  const found = await Promise.all([done, work()]).then(([f]) => f);
+  return found ? out : null;
 }
+
+// kurz an den Browser abgeben (Nachrichtenkanal statt setTimeout: keine 4-ms-Mindestpause)
+const yieldChannel = new MessageChannel();
+const yieldNow = () => new Promise((r) => { yieldChannel.port1.onmessage = () => r(); yieldChannel.port2.postMessage(0); });
 
 // Der Bahnhof selbst: alle als Bahnhof gekennzeichneten Gebäude in der Nähe; dazu Mitte, Achsen und Ausdehnung
 export function stationCluster(city, spot) {

@@ -105,7 +105,11 @@ body:not(.mapmode) .year {
   position: relative;
   height: 46px;
   border-bottom: 1.5px solid var(--ink);
+  cursor: pointer;
+  touch-action: pan-y;
 }
+/* größere Trefferfläche: über den Strichen und bis zu den Monatsnamen */
+.y-track::before { content: ""; position: absolute; inset: -14px -10px -26px; }
 .y-bar {
   position: absolute;
   bottom: 0;
@@ -115,13 +119,13 @@ body:not(.mapmode) .year {
   border: 0;
   border-radius: 0;
   background: transparent;
-  cursor: pointer;
+  pointer-events: none; /* die Leiste nimmt Maus und Finger an, die Striche bleiben für die Tastatur */
 }
 .y-bar::after {
   content: "";
   position: absolute;
-  left: calc(50% - 2px);
-  right: calc(50% - 2px);
+  left: calc(50% - 3px);
+  right: calc(50% - 3px);
   bottom: 0;
   height: var(--h);
   background: #b9b9b9;
@@ -129,8 +133,8 @@ body:not(.mapmode) .year {
   transition: background-color 150ms, left 150ms, right 150ms;
 }
 .y-bar:hover, .y-bar:focus-visible { background: transparent; outline: none; }
-.y-bar:hover::after, .y-bar:focus-visible::after, .y-bar.on::after { background: var(--ink); left: calc(50% - 3.5px); right: calc(50% - 3.5px); }
-.y-bar.cur::after { background: var(--ink); }
+.y-bar:hover::after, .y-bar:focus-visible::after, .y-bar.on::after { background: var(--ink); left: calc(50% - 4.5px); right: calc(50% - 4.5px); }
+.y-bar.cur::after { background: var(--ink); left: calc(50% - 4px); right: calc(50% - 4px); }
 .y-months { display: flex; justify-content: space-between; margin-top: 0.35rem; font-size: 0.66rem; color: var(--ink-2); text-transform: uppercase; }
 .y-months span { flex: 1; text-align: left; }
 
