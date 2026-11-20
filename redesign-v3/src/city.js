@@ -387,9 +387,49 @@ function facadeArt(m, p, fr, toW) {
   addLines(m, front, wall, toW);
   addLines(m, tri, gable, toW);
 }
+// Turm: gestufter Schaft mit Fensterraster, Gesims, Glockengeschoss mit Bogenöffnungen, zweites Gesims, Eckfialen,
+// Pyramidendach und Spitze. p = { uv/c, rot, w: Kantenlänge, h: Gesamthöhe bis zur Dachspitze }
+function addTower(out, p, toW) {
+  const fr = frameOf(p), s = p.w, h = p.h;
+  const sq = (size, du0 = 0, dv0 = 0) => { const a = size / 2, r = []; for (const [du, dv] of [[-a, -a], [a, -a], [a, a], [-a, a]]) r.push(...fr.at(du0 + du, dv0 + dv)); return r; };
+  const box = (size, zb, zt, du0 = 0, dv0 = 0) => buildMesh([zt, zb, 0, -1, -1, 0, 1, sq(size, du0, dv0), []], toW);
+  const zs = h * 0.54, zc = zs + 1.4, zb2 = zc + h * 0.17;
+  out.buildings.push(box(s, 0, zs)); // Schaft
+  out.buildings.push(box(s + 1.6, zs, zc)); // Gesims
+  const bel = box(s - 1.6, zc, zb2); // Glockengeschoss
+  const hw = (s - 1.6) / 2;
+  for (const f of bel.F) {
+    if (f.kind !== 0 || !f.a) continue;
+    const mx = (f.a[0] + f.b[0]) / 2 - fr.c[0], my = (f.a[1] + f.b[1]) / 2 - fr.c[1], l = Math.hypot(mx, my) || 1;
+    const nx = mx / l, ny = my / l, tx = -ny, ty = nx;
+    const P = (t, z) => [fr.c[0] + nx * (hw + 0.15) + tx * t, fr.c[1] + ny * (hw + 0.15) + ty * t, z];
+    const segs = [], seg = (t1, z1, t2, z2) => segs.push([...P(t1, z1), ...P(t2, z2)]);
+    const zbase = zc + 1.2, ztop = zb2 - 1.6;
+    for (const c of [-1.7, 1.7]) {
+      const r = 0.95, zspr = ztop - r;
+      seg(c - r, zbase, c - r, zspr); seg(c + r, zbase, c + r, zspr); seg(c - r, zbase, c + r, zbase);
+      let pt = c + r, pz = zspr;
+      for (let k = 1; k <= 8; k++) { const a = (k / 8) * Math.PI, qt = c + r * Math.cos(a), qz = zspr + r * Math.sin(a); seg(pt, pz, qt, qz); pt = qt; pz = qz; }
+      seg(c, zbase, c, zspr + r); // Mittelsprosse
+      for (const z of [zbase + 0.8, zbase + 1.6]) seg(c - r, z, c + r, z); // Schalllamellen
+    }
+    seg(-hw + 0.4, zb2 - 0.5, hw - 0.4, zb2 - 0.5);
+    f.plain = true;
+    addLines(bel, f, segs, toW);
+  }
+  out.buildings.push(bel);
+  out.buildings.push(box(s - 0.6, zb2, zb2 + 1.0)); // oberes Gesims
+  const zr = zb2 + 1.0, a = (s - 0.6) / 2 - 0.55;
+  out.buildings.push(buildMesh([h, zr, 3, h - zr, -1, 0, 1, sq(s - 1.0), []], toW)); // Pyramidendach
+  for (const [du, dv] of [[-a, -a], [a, -a], [a, a], [-a, a]]) out.buildings.push(buildMesh([zr + 3.6, zr, 3, 2.3, -1, 0, 1, sq(1.0, du, dv), []], toW)); // Eckfialen
+  const [fx, fy] = fr.at(0, 0);
+  out.buildings.push(latheMesh(toW, fx, fy, sphereRings(0.55, h + 0.5, 4), 8)); // Knauf
+  out.buildings.push(latheMesh(toW, fx, fy, [[0.16, h + 0.9], [0.05, h + 3.6]], 6)); // Spitze
+}
 // Pavillons, Flügelbauten und Türme: p = { c oder uv, rot, w: Breite entlang der Fassade, d: Tiefe, h: Höhe bis First/Spitze,
 // rs: Dachform (1 Giebel zur Fassade, 2 Walm, 3 Zelt), rh: Dachhöhe, atlas: Statuengruppe, art: Fassadenzeichnung }
 function addPavilion(out, p, toW) {
+  if (p.tower) return addTower(out, p, toW);
   const fr = frameOf(p), rs = p.rs ?? 1;
   const ring = [];
   for (const [du, dv] of [[-p.d / 2, -p.w / 2], [p.d / 2, -p.w / 2], [p.d / 2, p.w / 2], [-p.d / 2, p.w / 2]]) ring.push(...fr.at(du, dv));
@@ -484,6 +524,48 @@ async function fetchCity(key, batch, on) {
   return true;
 }
 
+// Gestapelte Bauteile (Türme in OSM: je Geschossgruppe ein Teil mit gleichem Grundriss) zu einem Gebäude zusammenfassen.
+// Beginnt der Turm erst in der Luft und liegt darunter nichts, wird er bis zum Boden verlängert (er schwebt sonst).
+async function buildParts(parts, out, opts, toW, slice) {
+  const key = (r) => {
+    const o = r[7], n = o.length / 2;
+    let cx = 0, cy = 0;
+    for (let i = 0; i < n; i++) { cx += o[2 * i]; cy += o[2 * i + 1]; }
+    return `${Math.round(cx / n / 8)}|${Math.round(cy / n / 8)}|${Math.round(Math.abs(signedArea(o)) / 150)}`; // Geschosse liegen oft ein paar Meter versetzt
+  };
+  const groups = new Map();
+  for (const r of parts) { const k = key(r); (groups.get(k) || groups.set(k, []).get(k)).push(r); }
+  const supported = (x, y, z) => out.buildings.some((m) => m.h * 1000 >= z - 1 && Math.abs(m.lc[0] - x) < m.rad * 1000 && Math.abs(m.lc[1] - y) < m.rad * 1000 && inRing(x, y, m.lo));
+  for (const g of groups.values()) {
+    g.sort((a, b) => a[1] - b[1]);
+    const chains = [];
+    for (const r of g) {
+      const last = chains[chains.length - 1];
+      if (last && r[1] <= last.top + 0.6) { last.top = Math.max(last.top, r[0]); last.rec = r[0] >= last.rec[0] ? [r[0], last.rec[1], ...r.slice(2)] : last.rec; }
+      else chains.push({ top: r[0], rec: r.slice() });
+    }
+    for (const c of chains) {
+      await slice();
+      const rec = c.rec;
+      const o = rec[7], n = o.length / 2;
+      let cx = 0, cy = 0;
+      for (let i = 0; i < n; i++) { cx += o[2 * i]; cy += o[2 * i + 1]; }
+      cx /= n; cy /= n;
+      if (rec[1] > 5 && !supported(cx, cy, rec[1])) rec[1] = 0; // nichts darunter: bis zum Boden
+      fixHeight(rec, opts);
+      try { out.buildings.push(buildMesh(rec, toW)); } catch { /* kaputte Geometrie überspringen */ }
+    }
+  }
+}
+function inRing(x, y, p) {
+  let c = false;
+  for (let i = 0, j = p.length / 2 - 1; i < p.length / 2; j = i++) {
+    const xi = p[2 * i], yi = p[2 * i + 1], xj = p[2 * j], yj = p[2 * j + 1];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-9) + xi) c = !c;
+  }
+  return c;
+}
+
 // perf.chunk: Gebäude pro Portion (kleiner = ruhigere Kamerafahrt); perf.minArea: kleinere Nebengebäude (m²) weglassen
 export async function loadCity(key, w, kx, opts = {}, perf = {}) {
   const chunk = perf.chunk || 250, minArea = perf.minArea || 0;
@@ -535,6 +617,7 @@ export async function loadCity(key, w, kx, opts = {}, perf = {}) {
   // Arbeit in Zeitscheiben von ca. 4 ms: danach gibt der Aufbau die Hand ab, damit zwischen den Bildern nie lange
   // gerechnet wird (feste Gebäudezahlen pro Portion wurden bei großen Städten zu langen Pausen)
   const todo = [];
+  const parts = [];
   let wake = null;
   const done = fetchCity(key, chunk, (part, v) => { todo.push([part, v]); wake?.(); });
   let t0 = performance.now();
@@ -552,7 +635,9 @@ export async function loadCity(key, w, kx, opts = {}, perf = {}) {
           await slice();
           if (rec[0] <= 2 || rec[7].length < 6) continue;
           if (phantom(rec)) continue;
-          if (minArea && rec[6] === 0 && Math.abs(signedArea(rec[7])) < minArea) continue; // kleine Nebengebäude (keine Bahnhofsteile)
+          // kleine Nebengebäude erst weit vom Bahnhof weglassen (nahe Bebauung bleibt vollständig)
+          if (minArea && rec[6] === 0 && Math.hypot(rec[7][0], rec[7][1]) > 450 && Math.abs(signedArea(rec[7])) < minArea) continue;
+          if (rec[1] > 0.5 && rec[6] === 0) { parts.push(rec); continue; } // Bauteile mit Mindesthöhe: unten zusammenfassen
           fixHeight(rec, opts);
           try { out.buildings.push(buildMesh(rec, toW)); } catch { /* kaputte Geometrie überspringen */ }
         }
@@ -563,6 +648,7 @@ export async function loadCity(key, w, kx, opts = {}, perf = {}) {
     }
   };
   const found = await Promise.all([done, work()]).then(([f]) => f);
+  if (found) await buildParts(parts, out, opts, toW, slice);
   if (found) for (const p of [opts.pavilion, ...(opts.extras || [])]) if (p) addPavilion(out, p, toW);
   return found ? out : null;
 }

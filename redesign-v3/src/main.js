@@ -271,8 +271,8 @@ const SPOT = {
     extras: [
       { uv: [56, -85], rot: 31.7, w: 26, d: 18, h: 34, rs: 2, rh: 8 },
       { uv: [58, 102], rot: 31.7, w: 26, d: 18, h: 34, rs: 2, rh: 8 },
-      { uv: [48, -101], rot: 31.7, w: 9, d: 9, h: 48, rs: 3, rh: 10 },
-      { uv: [50, 117], rot: 31.7, w: 9, d: 9, h: 46, rs: 3, rh: 9 },
+      { uv: [48, -101], rot: 31.7, w: 9, d: 9, h: 50, tower: true },
+      { uv: [50, 117], rot: 31.7, w: 9, d: 9, h: 48, tower: true },
     ],
   },
   "Köln Hbf": { through: true, c: [-10, 10], r: 200, cam: [-98, -112], door: [-32, -58], city: "Köln", rise: 0.38 },
@@ -1043,7 +1043,7 @@ function drawFloor(a) {
   ctx.fillRect(0, Math.max(0, yh), W, H - Math.max(0, yh));
   ctx.globalAlpha = 1;
 }
-function drawGround(c, a) {
+function drawGround(c, a, st) {
   ctx.globalAlpha = a;
   ctx.fillStyle = "#e2e2e2";
   ctx.strokeStyle = "#cfcfcf";
@@ -1060,6 +1060,19 @@ function drawGround(c, a) {
     }
     ctx.fill("evenodd");
     if (Q.waterEdge) ctx.stroke();
+  }
+  // Bahnhofsvorplatz: freie Fläche vor dem Haupteingang (die Gebäude verdecken, was bebaut ist)
+  if (st && st.spot && st.spot.door) {
+    const [dx, dy] = st.spot.door, R = st.spot.plaza ?? 42;
+    ctx.fillStyle = "#f7f7f7";
+    ctx.beginPath();
+    for (let k = 0; k < 28; k++) {
+      const an = (k / 28) * Math.PI * 2, p = cs(st.w[0] + ((dx + Math.cos(an) * R) / 1000) * st.kx, st.w[1] + (dy + Math.sin(an) * R) / 1000, 0);
+      if (p[2] < NEAR) continue;
+      k ? ctx.lineTo(sx(p), sy(p)) : ctx.moveTo(sx(p), sy(p));
+    }
+    ctx.closePath();
+    ctx.fill();
   }
   const WID = [3, 6, 9, 13, 18];
   const buckets = new Map();
@@ -1099,6 +1112,22 @@ function drawGround(c, a) {
   }
   ctx.strokeStyle = "#a3a3a3";
   ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  // Gleisbett: breiter, dunklerer Streifen unter den Schienen (Gleisfeld)
+  if (Q.tracks) {
+    const oc = c.toW(0, 0), cc = cs(oc[0], oc[1], 0);
+    if (cc[2] > NEAR) {
+      ctx.strokeStyle = "#e0e0e0";
+      ctx.lineWidth = clamp((6.5 * FOC) / (cc[2] * 1000), 1.2, 60);
+      ctx.lineCap = "butt";
+      ctx.beginPath();
+      for (const l of c.rail) if (boxDepth(l.bb ||= bboxOf(l.g)) !== null) pathLine(l.g);
+      ctx.stroke();
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#a3a3a3";
+      ctx.lineWidth = 0.6;
+    }
+  }
   ctx.beginPath();
   const sleepers = [];
   for (const l of c.rail) {
@@ -1472,7 +1501,13 @@ function orderByFootprint(list, limit = Infinity) {
         const HA = hullOf(A), HB = hullOf(B);
         const r = sepSide(HA, HB, cx, cy) || -sepSide(HB, HA, cx, cy);
         if (r !== 0) edges.push(r > 0 ? [i, j] : [j, i]);
-        else if (polysOverlap(A.lo, B.lo)) parent[find(i)] = find(j); // wirklich ineinander: Fläche für Fläche nach Tiefe
+        else if (polysOverlap(A.lo, B.lo)) {
+          // steht eines auf dem anderen (Hallenfelder auf der Bahnhofsplatte), kommt das obere später; sonst wirklich
+          // ineinander: Fläche für Fläche nach Tiefe
+          if (A.mh >= B.h - 0.0005) edges.push([i, j]);
+          else if (B.mh >= A.h - 0.0005) edges.push([j, i]);
+          else parent[find(i)] = find(j);
+        }
         else edges.push(distToRing(A.lo, cx, cy) < distToRing(B.lo, cx, cy) ? [i, j] : [j, i]); // nur Hüllen überlappen (L-Formen): das nähere liegt vorn
       }
   const deps = new Map(), gd = new Map(), gn = new Map();
@@ -1522,7 +1557,7 @@ function frame(now) {
     }
   }
   if (near.length && mode !== "map") drawFloor(near.reduce((mx, n) => Math.max(mx, n.a), 0));
-  for (const { s, a } of near) drawGround(s.city, a);
+  for (const { s, a } of near) drawGround(s.city, a, s);
   // im ruhigen Blick am Bahnhof keine Fernlinien (sie lägen sonst als Strich am Horizont)
   const flat = mode === "stand" && !anim;
   if (!flat) drawTrips(ppk);
@@ -1532,7 +1567,7 @@ function frame(now) {
   // (sauberste Überdeckung, wird nur einmal gezeichnet)
   const list = [];
   const settled = mode === "stand" && !anim && (now - reveal.t0) / 1000 > 3.2;
-  const calm = Q.calmFaces && settled;
+  const calm = settled; // im ruhigen Blick volle Flächen; auf niedrigen Stufen nur im Umkreis von 450 m (siehe unten)
   for (const { s, a } of near) {
     const rv = reveal.s === s ? (now - reveal.t0) / 1000 : 99;
     for (const b of s.city.buildings) {
@@ -1558,7 +1593,7 @@ function frame(now) {
       b._city = s;
       b._dc = c[2];
       b._bb = c[2] > NEAR ? [sx(c) - (r * FOC) / c[2], sy(c) - (r * FOC) / c[2], sx(c) + (r * FOC) / c[2], sy(c) + (r * FOC) / c[2]] : null;
-      if ((b.station || calm) && px > 8) {
+      if ((b.station || (calm && (Q.calmFaces || dl < 450))) && px > 8) {
         for (const f of b.F) {
           if (!facing(b, f)) continue;
           let d = 0;
