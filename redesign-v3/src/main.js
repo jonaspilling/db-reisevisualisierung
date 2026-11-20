@@ -113,10 +113,10 @@ const QUAL = [
   // Größe (px) weglassen (bewegt / ruhig) · calmFaces: im ruhigen Blick alle Gebäude Fläche für Fläche · windows: 0 aus,
   // 1 nur Bahnhof, 2 alle · roofPx: darunter nur Dachumriss · stride: Linienpunkte überspringen (nur in Bewegung) ·
   // maxBusy: höchstens so viele Nebengebäude pro Bild während Kamerafahrten (die größten bleiben)
-  { dpr: 1, roadMin: 3, roadPx: 1.6, waterEdge: false, cullBusy: 7, cullIdle: 3, calmFaces: false, windows: 0, floors: false, roofPx: 40, stride: 3, trainDetail: false, chunk: 80, minArea: 60, maxBusy: 250 },
-  { dpr: 1, roadMin: 2, roadPx: 0.9, waterEdge: false, cullBusy: 4.5, cullIdle: 2, calmFaces: false, windows: 1, floors: false, roofPx: 26, stride: 2, trainDetail: true, chunk: 120, minArea: 30, maxBusy: 500 },
-  { dpr: 1.5, roadMin: 0, roadPx: 0.5, waterEdge: true, cullBusy: 3, cullIdle: 1.2, calmFaces: true, windows: 2, floors: true, roofPx: 14, stride: 1, trainDetail: true, chunk: 200, minArea: 0, maxBusy: 900 },
-  { dpr: 2, roadMin: 0, roadPx: 0.35, waterEdge: true, cullBusy: 3, cullIdle: 1.2, calmFaces: true, windows: 2, floors: true, roofPx: 14, stride: 1, trainDetail: true, chunk: 250, minArea: 0, maxBusy: 1600 },
+  { dpr: 1, roadMin: 3, roadPx: 1.6, waterEdge: false, cullBusy: 7, cullIdle: 3, calmFaces: false, windows: 0, floors: false, roofPx: 40, stride: 3, trainDetail: false, tracks: false, chunk: 80, minArea: 60, maxBusy: 250, orderMax: 40 },
+  { dpr: 1, roadMin: 2, roadPx: 0.9, waterEdge: false, cullBusy: 4.5, cullIdle: 2, calmFaces: false, windows: 1, floors: false, roofPx: 26, stride: 2, trainDetail: true, tracks: false, chunk: 120, minArea: 30, maxBusy: 500, orderMax: 100 },
+  { dpr: 1.5, roadMin: 0, roadPx: 0.5, waterEdge: true, cullBusy: 3, cullIdle: 1.2, calmFaces: true, windows: 2, floors: true, roofPx: 14, stride: 1, trainDetail: true, tracks: true, chunk: 200, minArea: 0, maxBusy: 900, orderMax: 160 },
+  { dpr: 2, roadMin: 0, roadPx: 0.35, waterEdge: true, cullBusy: 3, cullIdle: 1.2, calmFaces: true, windows: 2, floors: true, roofPx: 14, stride: 1, trainDetail: true, tracks: true, chunk: 250, minArea: 0, maxBusy: 1600, orderMax: 220 },
 ];
 const store = {
   get() { try { return localStorage.getItem("bb-q"); } catch { return null; } },
@@ -139,7 +139,9 @@ let qMax = 3; // höher nur, solange es dort nicht wieder ruckelt
 let Q = QUAL[qLevel];
 const perf = { last: 0, n: 0, sum: 0, good: 0, quiet: 0, upAt: 0, fps: 0 };
 const SHOW_FPS = qParams.has("fps");
-const curDpr = () => Math.min(devicePixelRatio || 1, Q.dpr);
+// Die Übersichtskarte (nur Linien und Punkte) ist billig und bleibt scharf: volle Pixeldichte, außer auf Stufe 0
+const curDpr = () => Math.min(devicePixelRatio || 1, typeof mode !== "undefined" && mode === "map" && qLevel >= 1 ? 2 : Q.dpr);
+let appliedDpr = 0;
 function setQuality(l) {
   const before = curDpr();
   qLevel = l;
@@ -241,7 +243,7 @@ function pathLine(g, z = 0, upTo = Infinity) {
 }
 
 function resize() {
-  const dpr = curDpr();
+  const dpr = (appliedDpr = curDpr());
   W = innerWidth; H = innerHeight;
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   cv.style.width = W + "px"; cv.style.height = H + "px";
@@ -260,7 +262,9 @@ const SPOT = {
   // hips = Walmdächer am Empfangsgebäude, lanterns = Oberlicht-Aufbauten auf flachem Hallendach
   "Frankfurt(Main)Hbf": {
     c: [-20, 20], r: 230, cam: [168, -12], door: [92, -12], city: "Frankfurt am Main", rise: 0.48,
-    boost: [{ c: [38, 40], r: 12, h: 27 }, { c: [80, -60], r: 45, h: 24 }],
+    boost: [{ c: [38, 40], r: 12, h: 27, roof: 2, rh: 6 }, { c: [80, -60], r: 45, h: 24 }],
+    // Mittelbau mit Giebel über dem Haupteingang, darauf Atlas mit der Weltkugel (wie am echten Empfangsgebäude)
+    pavilion: { c: [84, -12], w: 38, d: 20, h: 38, atlas: true },
   },
   "Köln Hbf": { c: [-10, 10], r: 200, cam: [-98, -112], door: [-32, -58], city: "Köln", rise: 0.38 },
   "München Hbf": { c: [40, 0], r: 200, rect: [-125, -105, 206, 100], all: true, cam: [258, 64], door: [198, 56], city: "München", halls: false, lanterns: true },
@@ -543,6 +547,7 @@ function routeHTML(t, leftTime, kmText) {
     <p class="t-meta">${kmText}</p>`;
 }
 function ui() {
+  if (appliedDpr && curDpr() !== appliedDpr) resize(); // Wechsel zwischen Übersicht (scharf) und Bahnhofsansicht (sparsam)
   el.mapBtn.textContent = mode === "map" ? "Zurück" : "Übersicht";
   el.ticket.classList.toggle("away", mode === "map");
   if (mode !== "travel") el.stampEl.classList.remove("on");
@@ -958,10 +963,67 @@ function boxDepth(bb) {
   const X = sx(c), Y = sy(c), pr = (rad * FOC) / dmin + 50;
   return X + pr < 0 || X - pr > W || Y + pr < 0 || Y - pr > H ? null : dmin;
 }
+// Schienen: Versatz links und rechts der Gleisachse (Spurweite 1,435 m, Welt in km)
+function railOffsets(l) {
+  if (l.o) return l.o;
+  const g = l.g, n = g.length / 2, L = new Float64Array(g.length), R = new Float64Array(g.length), off = 0.0007175;
+  for (let i = 0; i < n; i++) {
+    const p = Math.max(0, i - 1), q = Math.min(n - 1, i + 1);
+    const dx = g[2 * q] - g[2 * p], dy = g[2 * q + 1] - g[2 * p + 1], len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len * off, ny = dx / len * off;
+    L[2 * i] = g[2 * i] + nx; L[2 * i + 1] = g[2 * i + 1] + ny;
+    R[2 * i] = g[2 * i] - nx; R[2 * i + 1] = g[2 * i + 1] - ny;
+  }
+  return (l.o = { L, R });
+}
+// Schwellen alle ~1,7 m, nur im ruhigen Bild und nah dran (höchstens 5000 pro Bild)
+function drawSleepers(lines) {
+  let budget = 5000;
+  ctx.strokeStyle = "#bdbdbd";
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  const step = 0.0017, half = 0.0009;
+  for (const l of lines) {
+    const g = l.g, n = g.length / 2;
+    let carry = 0;
+    for (let i = 1; i < n && budget > 0; i++) {
+      const x0 = g[2 * i - 2], y0 = g[2 * i - 1], dx = g[2 * i] - x0, dy = g[2 * i + 1] - y0, len = Math.hypot(dx, dy);
+      if (len < 1e-9) continue;
+      const nx = -dy / len * half, ny = dx / len * half;
+      for (let t = step - carry; t < len; t += step) {
+        const px = x0 + (dx / len) * t, py = y0 + (dy / len) * t;
+        const a = cs(px + nx, py + ny, 0), b = cs(px - nx, py - ny, 0);
+        if (a[2] < NEAR || b[2] < NEAR) continue;
+        const X = sx(a), Y = sy(a);
+        if (X < -20 || X > W + 20 || Y < -20 || Y > H + 20) continue;
+        ctx.moveTo(X, Y); ctx.lineTo(sx(b), sy(b));
+        if (--budget <= 0) break;
+      }
+      carry = (carry + len) % step;
+    }
+  }
+  ctx.stroke();
+}
+// Durchgehender Boden: hellgraue Fläche vom Horizont bis zum unteren Bildrand (am Horizont in Weiß auslaufend),
+// darauf liegen Straßen (weiß), Wasser (dunkler) und Gebäude
+function drawFloor(a) {
+  const yh = sp < 0.02 ? -1e5 : HY() - (FOC * cp) / sp; // Horizont im Bild
+  if (yh >= H) return;
+  ctx.globalAlpha = a;
+  if (yh < -2000) ctx.fillStyle = "#eeeeee";
+  else {
+    const g = ctx.createLinearGradient(0, yh, 0, yh + Math.max(60, (H - yh) * 0.3));
+    g.addColorStop(0, "rgba(238,238,238,0)");
+    g.addColorStop(1, "#eeeeee");
+    ctx.fillStyle = g;
+  }
+  ctx.fillRect(0, Math.max(0, yh), W, H - Math.max(0, yh));
+  ctx.globalAlpha = 1;
+}
 function drawGround(c, a) {
   ctx.globalAlpha = a;
-  ctx.fillStyle = "#f1f1f1";
-  ctx.strokeStyle = "#d4d4d4";
+  ctx.fillStyle = "#e2e2e2";
+  ctx.strokeStyle = "#cfcfcf";
   ctx.lineWidth = 0.7;
   for (const rings of c.wa) {
     rings.bb ||= bboxOf(rings[0]);
@@ -1004,7 +1066,7 @@ function drawGround(c, a) {
       prev = p;
     }
   }
-  ctx.strokeStyle = "#ececec";
+  ctx.strokeStyle = "#fbfbfb";
   ctx.lineCap = "round";
   for (const [k, arr] of buckets) {
     ctx.lineWidth = Math.min(400, 2 ** (k / 3));
@@ -1015,8 +1077,19 @@ function drawGround(c, a) {
   ctx.strokeStyle = "#a3a3a3";
   ctx.lineWidth = 0.6;
   ctx.beginPath();
-  for (const l of c.rail) if (boxDepth(l.bb ||= bboxOf(l.g)) !== null) pathLine(l.g);
+  const sleepers = [];
+  for (const l of c.rail) {
+    const dmin = boxDepth(l.bb ||= bboxOf(l.g));
+    if (dmin === null) continue;
+    const ppm = FOC / (dmin * 1000); // größte mögliche Pixel je Meter
+    if (Q.tracks && ppm > 1.1) {
+      const o = railOffsets(l); // zwei Schienen im Normalspurabstand
+      pathLine(o.L); pathLine(o.R);
+      if (!BUSY && ppm > 3) sleepers.push(l);
+    } else pathLine(l.g);
+  }
   ctx.stroke();
+  if (sleepers.length) drawSleepers(sleepers);
   ctx.globalAlpha = 1;
 }
 
@@ -1087,7 +1160,7 @@ function drawFace(b, f, alpha, detail, dash) {
     const hpx = Math.hypot(S[2 * d] - S[2 * a], S[2 * d + 1] - S[2 * a + 1]);
     if (Q.windows && (Q.windows === 2 || station) && wpx > 36 && hpx > 22 && f.len > 4 && f.wh > 4) drawWindows(b, f, alpha, station);
     else if (Q.floors && b.floors > 1 && hpx > 10) drawFloors(b, f, alpha, station);
-  }
+  } else if (detail && station && Q.windows && f.kind === 1 && !f.lines && f.i.length === 4) drawRoofTiles(b, f, alpha);
 }
 function drawFloors(b, f, alpha, station) {
   const S = b._S, [a, bb, c, d] = f.i, nfl = Math.min(b.floors, 40);
@@ -1125,13 +1198,38 @@ function drawWindows(b, f, alpha, station) {
   ctx.globalAlpha = alpha * (station ? 0.75 : 0.42);
   ctx.lineWidth = station ? 0.7 : 0.5;
   ctx.beginPath();
+  const cellPx = Math.hypot(bx - ax, by - ay) / cols;
+  const rich = station && cellPx > 13; // nah genug für Fensterbänke, Stürze und Pfosten
+  const fine = []; // Gliederung der Fassade (feiner gezeichnet)
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < cols; c++) {
       const u0 = (c + 0.28) / cols, u1 = (c + 0.72) / cols;
       if (r === 0 && doorU >= 0 && Math.abs((u0 + u1) / 2 - doorU) * f.len < 14) continue;
-      rect(u0, (r + 0.22) / rows, u1, (r + (station ? 0.78 : 0.7)) / rows);
+      const v0 = (r + 0.22) / rows, v1 = (r + (station ? 0.78 : 0.7)) / rows;
+      rect(u0, v0, u1, v1);
+      if (rich) {
+        const e = 0.07 / cols, um = (u0 + u1) / 2;
+        fine.push([u0 - e, v0, u1 + e, v0]); // Fensterbank
+        fine.push([u0 - e * 0.5, v1 + 0.05 / rows, u1 + e * 0.5, v1 + 0.05 / rows]); // Sturz
+        fine.push([um, v0, um, v1]); // Mittelpfosten
+        if (cellPx > 22) fine.push([u0, (v0 + v1) / 2 + 0.1 / rows, u1, (v0 + v1) / 2 + 0.1 / rows]); // Kämpfer
+      }
     }
   ctx.stroke();
+  if (station) {
+    // Sockel, Geschossbänder, Pilaster und Kranzgesims
+    const sock = Math.min(0.12, 1.1 / f.wh);
+    fine.push([0, sock, 1, sock]);
+    if (rows > 1) for (let r = 1; r < rows; r++) fine.push([0, r / rows, 1, r / rows]);
+    if (cols > 5) for (let c = 4; c < cols; c += 4) fine.push([c / cols, sock, c / cols, 0.94]);
+    fine.push([0, 0.965, 1, 0.965]);
+    ctx.globalAlpha = alpha * 0.6;
+    ctx.lineWidth = 0.55;
+    ctx.beginPath();
+    for (const [u0, v0, u1, v1] of fine) { const p1 = P(u0, v0), p2 = P(u1, v1); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); }
+    ctx.stroke();
+    ctx.globalAlpha = alpha * 0.75;
+  }
   // Gesims oben
   if (station) {
     ctx.beginPath();
@@ -1155,6 +1253,24 @@ function drawWindows(b, f, alpha, station) {
     ctx.moveTo(e1[0], e1[1]); ctx.lineTo(e2[0], e2[1]);
     ctx.stroke();
   }
+  ctx.globalAlpha = alpha;
+}
+// Geneigte Bahnhofsdächer: Deckreihen parallel zur Traufe
+function drawRoofTiles(b, f, alpha) {
+  const S = b._S, [a, bb, c, d] = f.i;
+  const wpx = Math.hypot(S[2 * bb] - S[2 * a], S[2 * bb + 1] - S[2 * a + 1]);
+  const hpx = Math.hypot(S[2 * d] - S[2 * a], S[2 * d + 1] - S[2 * a + 1]);
+  if (wpx < 40 || hpx < 14) return;
+  const n = Math.min(26, Math.floor(hpx / 5));
+  ctx.globalAlpha = alpha * 0.5;
+  ctx.lineWidth = 0.4;
+  ctx.beginPath();
+  for (let k = 1; k < n; k++) {
+    const t = k / n;
+    ctx.moveTo(S[2 * a] + (S[2 * d] - S[2 * a]) * t, S[2 * a + 1] + (S[2 * d + 1] - S[2 * a + 1]) * t);
+    ctx.lineTo(S[2 * bb] + (S[2 * c] - S[2 * bb]) * t, S[2 * bb + 1] + (S[2 * c + 1] - S[2 * bb + 1]) * t);
+  }
+  ctx.stroke();
   ctx.globalAlpha = alpha;
 }
 // weit weg: nur der Dachumriss
@@ -1264,9 +1380,52 @@ function sepSide(H, G, cx, cy) {
 // Gebäude, die sich in der Draufsicht nicht überlappen, haben eine eindeutige Reihenfolge (das der Kamera nähere
 // kommt später); überlappende (Hallen mit Anbauten, Bauteile) bleiben eine Gruppe und werden Fläche für Fläche nach
 // Tiefe sortiert. Die Gruppen werden dann topologisch geordnet, sonst nach Tiefe (wie bisher).
-function orderByFootprint(list) {
+// Kürzeste Entfernung des Punkts (cx, cy) zum Grundriss p
+function distToRing(p, cx, cy) {
+  let best = Infinity;
+  const n = p.length / 2;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, ax = p[2 * i], ay = p[2 * i + 1], dx = p[2 * j] - ax, dy = p[2 * j + 1] - ay, L = dx * dx + dy * dy;
+    const u = L ? clamp(((cx - ax) * dx + (cy - ay) * dy) / L, 0, 1) : 0;
+    best = Math.min(best, Math.hypot(cx - ax - u * dx, cy - ay - u * dy));
+  }
+  return best;
+}
+// Überlappen sich zwei Grundrisse wirklich (nicht nur ihre konvexen Hüllen)?
+function polysOverlap(P, Q) {
+  const np = P.length / 2, nq = Q.length / 2;
+  const side = (ax, ay, bx, by, px, py) => (bx - ax) * (py - ay) - (by - ay) * (px - ax);
+  for (let i = 0; i < np; i++) {
+    const a = i, b = (i + 1) % np;
+    for (let j = 0; j < nq; j++) {
+      const c = j, d = (j + 1) % nq;
+      const o1 = side(P[2 * a], P[2 * a + 1], P[2 * b], P[2 * b + 1], Q[2 * c], Q[2 * c + 1]), o2 = side(P[2 * a], P[2 * a + 1], P[2 * b], P[2 * b + 1], Q[2 * d], Q[2 * d + 1]);
+      const o3 = side(Q[2 * c], Q[2 * c + 1], Q[2 * d], Q[2 * d + 1], P[2 * a], P[2 * a + 1]), o4 = side(Q[2 * c], Q[2 * c + 1], Q[2 * d], Q[2 * d + 1], P[2 * b], P[2 * b + 1]);
+      if (o1 * o2 < -1e-6 && o3 * o4 < -1e-6) return true;
+    }
+  }
+  const inside = (x, y, R) => {
+    let c = false;
+    for (let i = 0, j = R.length / 2 - 1; i < R.length / 2; j = i++) {
+      const xi = R[2 * i], yi = R[2 * i + 1], xj = R[2 * j], yj = R[2 * j + 1];
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-9) + xi) c = !c;
+    }
+    return c;
+  };
+  return inside(P[0], P[1], Q) || inside(Q[0], Q[1], P);
+}
+let ordCache = { sig: "", rank: new Map() };
+function orderByFootprint(list, limit = Infinity) {
   const bs = [], idx = new Map();
   for (const it of list) if (!idx.has(it.b)) { idx.set(it.b, bs.length); bs.push(it.b); }
+  if (bs.length > limit) return false;
+  // unveränderter Blick und gleiche Gebäude: Ergebnis der letzten Rechnung wiederverwenden (die Ansicht am Bahnhof steht fest)
+  const sig = [view.tx, view.ty, view.tz, view.dist, view.pitch, view.bearing, W, H, bs.length].join("|");
+  if (ordCache.sig === sig && bs.every((b) => ordCache.rank.has(b))) {
+    for (const it of list) it._r = ordCache.rank.get(it.b);
+    list.sort((p, q) => p._r - q._r || q.d - p.d);
+    return true;
+  }
   const n = bs.length, parent = Array.from({ length: n }, (_, i) => i);
   const find = (i) => { while (parent[i] !== i) i = parent[i] = parent[parent[i]]; return i; };
   const cell = 160, grid = new Map();
@@ -1289,8 +1448,9 @@ function orderByFootprint(list) {
         const s = A._city, cx = ((camX - s.w[0]) * 1000) / s.kx, cy = (camY - s.w[1]) * 1000;
         const HA = hullOf(A), HB = hullOf(B);
         const r = sepSide(HA, HB, cx, cy) || -sepSide(HB, HA, cx, cy);
-        if (r === 0) parent[find(i)] = find(j);
-        else edges.push(r > 0 ? [i, j] : [j, i]);
+        if (r !== 0) edges.push(r > 0 ? [i, j] : [j, i]);
+        else if (polysOverlap(A.lo, B.lo)) parent[find(i)] = find(j); // wirklich ineinander: Fläche für Fläche nach Tiefe
+        else edges.push(distToRing(A.lo, cx, cy) < distToRing(B.lo, cx, cy) ? [i, j] : [j, i]); // nur Hüllen überlappen (L-Formen): das nähere liegt vorn
       }
   const deps = new Map(), gd = new Map(), gn = new Map();
   for (let i = 0; i < n; i++) { const g = find(i); gd.set(g, (gd.get(g) || 0) + bs[i]._dc); gn.set(g, (gn.get(g) || 0) + 1); }
@@ -1305,7 +1465,9 @@ function orderByFootprint(list) {
   };
   for (const g of groups) visit(g);
   for (const it of list) it._r = rank.get(find(idx.get(it.b)));
+  ordCache = { sig, rank: new Map(bs.map((b, i) => [b, rank.get(find(i))])) };
   list.sort((p, q) => p._r - q._r || q.d - p.d);
+  return true;
 }
 
 let stationHit = [], stopHit = [];
@@ -1336,6 +1498,7 @@ function frame(now) {
       if (a > 0) near.push({ s, a });
     }
   }
+  if (near.length && mode !== "map") drawFloor(near.reduce((mx, n) => Math.max(mx, n.a), 0));
   for (const { s, a } of near) drawGround(s.city, a);
   // im ruhigen Blick am Bahnhof keine Fernlinien (sie lägen sonst als Strich am Horizont)
   const flat = mode === "stand" && !anim;
@@ -1394,7 +1557,8 @@ function frame(now) {
   trainList.sort((p, q) => q.d - p.d);
   // Ruhiger Blick am Bahnhof: Gebäude nach ihrem Grundriss ordnen (statt nur nach Mittelpunkt-Tiefe), sonst schneiden
   // lange Häuser und Hallen scheinbar ineinander
-  if (settled && !qParams.has("oldsort")) orderByFootprint(list); else list.sort((p, q) => q.d - p.d);
+  // (auch in Bewegung, solange es nicht zu viele Gebäude sind; sonst bleibt die schnelle Sortierung nach Tiefe)
+  if (qParams.has("oldsort") || !orderByFootprint(list, settled ? Infinity : Q.orderMax)) list.sort((p, q) => q.d - p.d);
   const hit = new Set();
   for (const it of list) {
     const b = it.b;
@@ -1521,7 +1685,7 @@ cv.addEventListener("pointermove", (e) => {
     poke(); need();
   } else if (!drag && !anim) {
     const h = pickStation(e.clientX, e.clientY);
-    cv.style.cursor = h ? "pointer" : "default";
+    cv.style.cursor = h && (h.kind === "here" || (h.s.terminal && mode === "map")) ? "pointer" : "default";
     el.tip.hidden = !h;
     if (h) {
       const t = trips[leg];
@@ -1566,8 +1730,16 @@ function pickStation(X, Y) {
       }
     }
   }
-  for (const h of stopHit) if (Math.hypot(X - h.X, Y - h.Y) < Math.max(12, (h.r || 0) + 5)) return { kind: "stop", s: h.s };
-  return null;
+  // Übersicht: anklickbare Bahnhöfe (schwarz) haben Vorrang und eine großzügige Trefferfläche; der nächste gewinnt.
+  // Nicht anklickbare gelten nur, wenn kein anklickbarer in Reichweite ist (dann gibt es nur den Hinweis, keinen Klick).
+  let click = null, cd = Infinity, other = null, od = Infinity;
+  for (const h of stopHit) {
+    const d = Math.hypot(X - h.X, Y - h.Y);
+    if (mode === "map" && h.s.terminal) { if (d < Math.max(20, (h.r || 0) + 10) && d < cd) { cd = d; click = h; } }
+    else if (d < Math.max(10, (h.r || 0) + 3) && d < od) { od = d; other = h; }
+  }
+  const hit = click || other;
+  return hit ? { kind: "stop", s: hit.s } : null;
 }
 function zoomAt(X, Y, factor) {
   // Übersicht: nicht weiter hinaus als das ganze Jahr, Zoom immer um die Bildmitte (die Karte wandert nicht)
@@ -1639,4 +1811,4 @@ if (params.get("start")) {
 need();
 
 // für Tests
-window.__bb = { cam, need, stations, trips, depart, toMap, fromMap, jumpTo, get mode() { return mode; } };
+window.__bb = { cam, need, stations, modelView, doorView, viewFrom, trips, depart, toMap, fromMap, jumpTo, get mode() { return mode; } };

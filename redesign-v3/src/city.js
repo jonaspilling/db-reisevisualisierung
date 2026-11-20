@@ -2,6 +2,7 @@
 // Jedes Gebäude wird einmal in ein kleines 3D-Netz umgerechnet: Wände, Dachflächen (nach roof:shape), Dachdeckel.
 // Koordinaten danach in Welt-Kilometern (wie die Fahrtlinien), Höhen ebenfalls in Kilometern.
 
+const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
 const file = (key) => key.replace(/[() ]/g, "_");
 
 // ---------- kleine Geometrie-Helfer (lokale Meter) ----------
@@ -107,8 +108,11 @@ function buildMesh(rec, toW) {
   const area0 = Math.abs(signedArea(outer));
   // Bahnsteighallen: fast halbkreisförmige Tonnen (wie die großen Hallen in Frankfurt), nicht flach
   const hall = rs === 5 && st > 0 && area0 / Math.max(1, L * Wd) > 0.72;
-  if (hall) rh = Math.max(rh, Math.min((rec.rise ?? 0.42) * Wd, h - mh - 1.5));
+  // Hallen: Wölbung nach Bogenhöhe der Halle; stimmt die erfasste Gebäudehöhe nicht (z. B. Köln: 7 m bei 22 m Dach),
+  // wird das Gebäude so hoch wie die Wölbung verlangt, statt den Bogen flachzudrücken
+  if (hall) rh = Math.max(rh, Math.min((rec.rise ?? 0.42) * Wd, Math.max(h - mh - 1.5, 24)));
   if (hall && rec.rise != null && rec.rise < 0.3) rh = Math.min(rh, rec.rise * Wd); // flache Hallen (Lille)
+  if (hall) h = Math.max(h, mh + rh + 1.5);
   if (h - rh < mh + 0.5) rh = Math.max(0, h - mh - 0.5);
   const ze = h - rh;
 
@@ -118,8 +122,8 @@ function buildMesh(rec, toW) {
     case 1: rings = [[1, 1, ze], [1, 0, h]]; break; // Satteldach
     case 2: rings = [[1, 1, ze], [Math.max(0, (L - Wd) / L), 0, h]]; break; // Walmdach
     case 3: rings = [[1, 1, ze], [0, 0, h]]; break; // Zeltdach
-    case 4: rings = [0, 1, 2, 3, 4].map((k) => { const t = (k / 4) * (Math.PI / 2); return [Math.cos(t), Math.cos(t), ze + rh * Math.sin(t)]; }); break; // Kuppel
-    case 5: rings = [0, 1, 2, 3, 4].map((k) => { const t = (k / 4) * (Math.PI / 2); return [1, Math.cos(t), ze + rh * Math.sin(t)]; }); break; // Tonnendach
+    case 4: rings = [0, 1, 2, 3, 4, 5, 6].map((k) => { const t = (k / 6) * (Math.PI / 2); return [Math.cos(t), Math.cos(t), ze + rh * Math.sin(t)]; }); break; // Kuppel
+    case 5: rings = [0, 1, 2, 3, 4, 5, 6].map((k) => { const t = (k / 6) * (Math.PI / 2); return [1, Math.cos(t), ze + rh * Math.sin(t)]; }); break; // Tonnendach
     default: rings = [[1, 1, ze]];
   }
 
@@ -277,6 +281,71 @@ function buildMesh(rec, toW) {
   return { V: new Float64Array(V), F, st, lo: outer, top: R[0], h: h / 1000, ze: ze / 1000, mh: mh / 1000, c: [wx, wy, h / 2000], lc: [cx, cy], rad: rad / 1000, area, floors: Math.max(0, Math.floor((ze - mh) / 3.2)) };
 }
 
+// ---------- Handgebaute Zusätze (Statuen, Pavillons) ----------
+// Drehkörper aus Ringen [Radius in m, Höhe in m] von unten nach oben (Säulen, Figuren, Kugeln)
+function latheMesh(toW, x, y, rings, seg = 14) {
+  const V = [], F = [], idx = [];
+  for (const [r, z] of rings) {
+    const row = [];
+    for (let k = 0; k < seg; k++) {
+      const a = (k / seg) * Math.PI * 2, [X, Y] = toW(x + Math.cos(a) * r, y + Math.sin(a) * r);
+      V.push(X, Y, z / 1000);
+      row.push(V.length / 3 - 1);
+    }
+    idx.push(row);
+  }
+  const P = (i) => [V[3 * i], V[3 * i + 1], V[3 * i + 2]];
+  const [cx0, cy0] = toW(x, y);
+  const zs = rings.map((r) => r[1]), zmid = (Math.min(...zs) + Math.max(...zs)) / 2000;
+  const face = (ids, kind) => {
+    let pts = ids.map(P), n = newell(pts);
+    let mx = 0, my = 0, mz = 0;
+    for (const p of pts) { mx += p[0]; my += p[1]; mz += p[2]; }
+    mx /= pts.length; my /= pts.length; mz /= pts.length;
+    if (kind !== 2 && n[0] * (mx - cx0) + n[1] * (my - cy0) + n[2] * (mz - zmid) < 0) { ids = ids.slice().reverse(); n = n.map((v) => -v); }
+    F.push({ i: ids, n, kind });
+  };
+  for (let j = 0; j < idx.length - 1; j++)
+    for (let k = 0; k < seg; k++) {
+      const k1 = (k + 1) % seg;
+      if (rings[j][0] < 0.01 && rings[j + 1][0] < 0.01) continue;
+      face([idx[j][k], idx[j][k1], idx[j + 1][k1], idx[j + 1][k]], 3);
+    }
+  const last = rings.length - 1;
+  if (rings[last][0] >= 0.01) face(idx[last].slice(), 2);
+  let wide = 0;
+  rings.forEach((r, j) => { if (r[0] > rings[wide][0]) wide = j; });
+  const R = rings[wide][0], lo = [];
+  for (let k = 0; k < 12; k++) lo.push(x + Math.cos((k / 12) * Math.PI * 2) * R, y + Math.sin((k / 12) * Math.PI * 2) * R);
+  const top = Math.max(...zs) / 1000, base = Math.min(...zs) / 1000;
+  return { V: new Float64Array(V), F, st: 1, lo, top: idx[wide], h: top, ze: top, mh: base, c: [cx0, cy0, (top + base) / 2], lc: [x, y], rad: R / 1000, area: Math.PI * R * R, floors: 0 };
+}
+const sphereRings = (R, zc, n = 6) => Array.from({ length: n + 1 }, (_, k) => { const t = -Math.PI / 2 + (k / n) * Math.PI; return [Math.max(0.001, R * Math.cos(t)), zc + R * Math.sin(t)]; });
+// Atlas mit der Weltkugel (Frankfurt Hbf): Sockel, Körper, Kopf, erhobene Arme, Kugel
+function atlas(toW, x, y, z0, k = 1) {
+  const out = [];
+  const box = (cx, cy, w, d, zb, zt) => buildMesh([zt / 1000 * 1000, zb, 0, -1, -1, 0, 1, [cx - w / 2, cy - d / 2, cx + w / 2, cy - d / 2, cx + w / 2, cy + d / 2, cx - w / 2, cy + d / 2], []], toW);
+  out.push(latheMesh(toW, x, y, [[3.4 * k, z0], [3.4 * k, z0 + 2.2 * k], [2.5 * k, z0 + 2.2 * k], [2.5 * k, z0 + 3.4 * k]], 16)); // Sockel
+  const zb = z0 + 3.4 * k;
+  out.push(latheMesh(toW, x, y, [[1.5 * k, zb], [1.2 * k, zb + 2.4 * k], [1.15 * k, zb + 3.2 * k], [0.7 * k, zb + 3.5 * k]], 12)); // Körper
+  out.push(latheMesh(toW, x, y, sphereRings(0.62 * k, zb + 4.1 * k, 4), 10)); // Kopf
+  for (const side of [-1, 1]) out.push(box(x, y + side * 1.15 * k, 0.55 * k, 0.55 * k, zb + 3.0 * k, zb + 6.4 * k)); // Arme
+  out.push(latheMesh(toW, x, y, sphereRings(2.5 * k, zb + 8.6 * k, 8), 16)); // Weltkugel
+  return out;
+}
+// Mittelpavillon mit Giebel und Statuengruppe; p = { c: [x, y], w: Breite entlang der Fassade, d: Tiefe, h: Höhe bis First }
+function addPavilion(out, p, toW) {
+  const [x, y] = p.c, x0 = x - p.d / 2, x1 = x + p.d / 2, y0 = y - p.w / 2, y1 = y + p.w / 2;
+  // Giebelfläche zur Fassade (Firstrichtung Ost-West, quer = 1)
+  const m = buildMesh([p.h, 0, 1, -1, -1, 1, 1, [x0, y0, x1, y0, x1, y1, x0, y1], []], toW);
+  out.buildings.push(m);
+  if (p.atlas) {
+    const top = m.h * 1000;
+    out.buildings.push(...atlas(toW, x + p.d * 0.25, y, top, 1));
+    for (const side of [-1, 1]) out.buildings.push(...atlas(toW, x + p.d * 0.25, y + side * p.w * 0.42, top - 1.5, 0.45)); // zwei kleinere Figuren an den Ecken
+  }
+}
+
 // Höhen korrigieren: Bahnhofsgebäude, die in OSM ohne (oder mit unplausibler) Höhe erfasst sind,
 // bekommen eine realistische Höhe; dazu gezielte Werte je Bahnhof (boost: Kreis in lokalen Metern + Höhe)
 function fixHeight(rec, opts) {
@@ -354,7 +423,7 @@ async function fetchCity(key, batch, on) {
   const r = await fetch(url);
   if (!r.ok) return false;
   const d = await r.json();
-  for (const part of ["b", "road", "rail", "water", "wa"]) on(part, d[part] || []);
+  for (const part of ["rail", "b", "road", "water", "wa"]) on(part, d[part] || []);
   return true;
 }
 
@@ -371,6 +440,41 @@ export async function loadCity(key, w, kx, opts = {}, perf = {}) {
     return g;
   };
   const out = { buildings: [], road: [], rail: [], water: [], wa: [], toW };
+  // Aufräumen rund um den Bahnhof (350 m): winzige Splitter und kleine Bauten direkt auf den Gleisen gibt es in
+  // Wirklichkeit nicht (OSM-Reste, Stellwerke und Bahnsteigdächer sind als Bahnhofsteile gekennzeichnet und bleiben)
+  const rcell = 20, rgrid = new Map();
+  const addRail = (l) => {
+    for (let i = 0; i + 3 < l.length; i += 2) {
+      const ax = l[i], ay = l[i + 1], bx = l[i + 2], by = l[i + 3], n = Math.max(1, Math.floor(Math.hypot(bx - ax, by - ay) / rcell) + 1);
+      for (let k = 0; k <= n; k++) {
+        const key = Math.floor((ax + ((bx - ax) * k) / n) / rcell) * 8191 + Math.floor((ay + ((by - ay) * k) / n) / rcell);
+        (rgrid.get(key) || rgrid.set(key, []).get(key)).push(ax, ay, bx, by);
+      }
+    }
+  };
+  const onRail = (x, y, tol) => {
+    const gx = Math.floor(x / rcell), gy = Math.floor(y / rcell);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const a = rgrid.get((gx + i) * 8191 + gy + j);
+      if (!a) continue;
+      for (let t = 0; t < a.length; t += 4) {
+        const dx = a[t + 2] - a[t], dy = a[t + 3] - a[t + 1], L = dx * dx + dy * dy;
+        const u = L ? clampN(((x - a[t]) * dx + (y - a[t + 1]) * dy) / L, 0, 1) : 0;
+        if (Math.hypot(x - a[t] - u * dx, y - a[t + 1] - u * dy) < tol) return true;
+      }
+    }
+    return false;
+  };
+  const phantom = (rec) => {
+    if (rec[6] > 0) return false;
+    const o = rec[7], n = o.length / 2;
+    let cx = 0, cy = 0;
+    for (let i = 0; i < n; i++) { cx += o[2 * i]; cy += o[2 * i + 1]; }
+    cx /= n; cy /= n;
+    if (Math.hypot(cx, cy) > 350) return false;
+    const a = Math.abs(signedArea(o));
+    return a < 15 || (a < 400 && onRail(cx, cy, 3.5));
+  };
   // Arbeit in Zeitscheiben von ca. 4 ms: danach gibt der Aufbau die Hand ab, damit zwischen den Bildern nie lange
   // gerechnet wird (feste Gebäudezahlen pro Portion wurden bei großen Städten zu langen Pausen)
   const todo = [];
@@ -390,16 +494,19 @@ export async function loadCity(key, w, kx, opts = {}, perf = {}) {
         for (const rec of v) {
           await slice();
           if (rec[0] <= 2 || rec[7].length < 6) continue;
+          if (phantom(rec)) continue;
           if (minArea && rec[6] === 0 && Math.abs(signedArea(rec[7])) < minArea) continue; // kleine Nebengebäude (keine Bahnhofsteile)
           fixHeight(rec, opts);
           try { out.buildings.push(buildMesh(rec, toW)); } catch { /* kaputte Geometrie überspringen */ }
         }
-      } else if (part === "road") for (const l of v) { await slice(); out.road.push({ g: pts(l, 1), cls: l[0] }); }
-      else if (part === "rail" || part === "water") for (const l of v) { await slice(); out[part].push({ g: pts(l), cls: 0 }); }
+      } else if (part === "rail") for (const l of v) { addRail(l); await slice(); out.rail.push({ g: pts(l), cls: 0 }); }
+      else if (part === "road") for (const l of v) { await slice(); out.road.push({ g: pts(l, 1), cls: l[0] }); }
+      else if (part === "water") for (const l of v) { await slice(); out.water.push({ g: pts(l), cls: 0 }); }
       else if (part === "wa") for (const [o, hs] of v) { await slice(); out.wa.push([pts(o), ...hs.map((h) => pts(h))]); }
     }
   };
   const found = await Promise.all([done, work()]).then(([f]) => f);
+  if (found && opts.pavilion) addPavilion(out, opts.pavilion, toW);
   return found ? out : null;
 }
 
