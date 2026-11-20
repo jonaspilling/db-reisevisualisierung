@@ -333,12 +333,64 @@ function atlas(toW, x, y, z0, k = 1) {
   out.push(latheMesh(toW, x, y, sphereRings(2.5 * k, zb + 8.6 * k, 8), 16)); // Weltkugel
   return out;
 }
-// Mittelpavillon mit Giebel und Statuengruppe; p = { c: [x, y], w: Breite entlang der Fassade, d: Tiefe, h: Höhe bis First }
+// Linien auf eine Fläche legen (Weltpunkte werden angehängt, Linien verweisen darauf); Segmente in lokalen Metern
+function addLines(m, face, segs, toW) {
+  if (!face || !segs.length) return;
+  const n0 = m.V.length / 3, extra = [], lines = [];
+  segs.forEach(([x1, y1, z1, x2, y2, z2], k) => {
+    const [X1, Y1] = toW(x1, y1), [X2, Y2] = toW(x2, y2);
+    extra.push(X1, Y1, z1 / 1000, X2, Y2, z2 / 1000);
+    lines.push([n0 + 2 * k, n0 + 2 * k + 1]);
+  });
+  const V = new Float64Array(m.V.length + extra.length);
+  V.set(m.V);
+  V.set(extra, m.V.length);
+  m.V = V;
+  face.lines = (face.lines || []).concat(lines);
+}
+// Mittelbau des Frankfurter Hauptbahnhofs: Bogenfenster mit Sprossen, drei Portale, Pilaster, Kranzgesims, Uhr im Giebel
+function facadeArt(m, p, toW) {
+  const [x, yc] = p.c, xe = x + p.d / 2, X = xe + 0.15, y0 = yc - p.w / 2, y1 = yc + p.w / 2;
+  const wall = [], gable = [];
+  const seg = (list, a, za, b, zb) => list.push([X, a, za, X, b, zb]);
+  const arc = (list, cy, cz, r, a0, a1, n = 14) => {
+    let py = cy + r * Math.cos(a0), pz = cz + r * Math.sin(a0);
+    for (let k = 1; k <= n; k++) { const a = a0 + ((a1 - a0) * k) / n, qy = cy + r * Math.cos(a), qz = cz + r * Math.sin(a); seg(list, py, pz, qy, qz); py = qy; pz = qz; }
+  };
+  const ze = p.h - Math.min(12, p.w * 0.35); // Traufhöhe
+  const zs = 17, r = 7.5;
+  // Bogenfenster
+  for (const [rr, zb] of [[r, 5.5], [r + 1.3, 4.8]]) { seg(wall, yc - rr, zb, yc - rr, zs); seg(wall, yc + rr, zb, yc + rr, zs); arc(wall, yc, zs, rr, 0, Math.PI); }
+  seg(wall, yc - r - 1.3, 4.8, yc + r + 1.3, 4.8);
+  for (const dy of [-2.5, 0, 2.5]) seg(wall, yc + dy, 5.5, yc + dy, zs + Math.sqrt(r * r - dy * dy));
+  for (const z of [9.5, 13.5]) seg(wall, yc - r, z, yc + r, z);
+  for (const a of [Math.PI / 6, Math.PI / 3, (2 * Math.PI) / 3, (5 * Math.PI) / 6]) seg(wall, yc, zs, yc + r * Math.cos(a), zs + r * Math.sin(a));
+  // drei Portale im Erdgeschoss
+  for (const cy of [yc - 11, yc, yc + 11]) { seg(wall, cy - 2.2, 0, cy - 2.2, 2.2); seg(wall, cy + 2.2, 0, cy + 2.2, 2.2); arc(wall, cy, 2.2, 2.2, 0, Math.PI, 8); seg(wall, cy, 0, cy, 4.4); }
+  // Pilaster und Kranzgesims
+  for (const off of [-19.5, -14, 14, 19.5]) { if (Math.abs(off) > p.w / 2 - 1) continue; seg(wall, yc + off, 0, yc + off, ze - 1.5); seg(wall, yc + off - 0.8, ze - 1.5, yc + off + 0.8, ze - 1.5); }
+  for (const z of [ze - 0.9, ze - 0.2]) seg(wall, y0, z, y1, z);
+  // Giebel: Uhr mit Ziffernstrichen und Zeigern, innen ein zweiter Giebelrand
+  const zc = ze + 4.5, rc = 3.1;
+  arc(gable, yc, zc, rc, 0, Math.PI * 2, 22);
+  for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; seg(gable, yc + 2.5 * Math.cos(a), zc + 2.5 * Math.sin(a), yc + rc * Math.cos(a), zc + rc * Math.sin(a)); }
+  seg(gable, yc, zc, yc, zc + 2.3);
+  seg(gable, yc, zc, yc + 1.5 * Math.cos(-Math.PI / 6), zc + 1.5 * Math.sin(-Math.PI / 6));
+  seg(gable, y0 + 2.4, ze + 0.6, yc, p.h - 1.7);
+  seg(gable, yc, p.h - 1.7, y1 - 2.4, ze + 0.6);
+  const east = m.F.find((f) => f.kind === 0 && f.a && Math.abs(f.a[0] - (x + p.d / 2)) < 0.05 && Math.abs(f.b[0] - (x + p.d / 2)) < 0.05);
+  const tri = m.F.find((f) => f.kind === 1 && f.i.length === 3 && f.n[0] > 0.5);
+  if (east) east.plain = true; // das Fensterraster entfällt, die Fassade ist gezeichnet
+  addLines(m, east, wall, toW);
+  addLines(m, tri, gable, toW);
+}
+// Pavillons, Flügelbauten und Türme: p = { c: [x, y], w: Breite entlang der Fassade, d: Tiefe, h: Höhe bis First/Spitze,
+// rs: Dachform (1 Giebel quer zur Fassade, 2 Walm, 3 Zelt), rh: Dachhöhe, atlas: Statuengruppe, art: Fassadenzeichnung }
 function addPavilion(out, p, toW) {
-  const [x, y] = p.c, x0 = x - p.d / 2, x1 = x + p.d / 2, y0 = y - p.w / 2, y1 = y + p.w / 2;
-  // Giebelfläche zur Fassade (Firstrichtung Ost-West, quer = 1)
-  const m = buildMesh([p.h, 0, 1, -1, -1, 1, 1, [x0, y0, x1, y0, x1, y1, x0, y1], []], toW);
+  const [x, y] = p.c, x0 = x - p.d / 2, x1 = x + p.d / 2, y0 = y - p.w / 2, y1 = y + p.w / 2, rs = p.rs ?? 1;
+  const m = buildMesh([p.h, 0, rs, p.rh ?? -1, -1, rs === 1 ? 1 : 0, 1, [x0, y0, x1, y0, x1, y1, x0, y1], []], toW);
   out.buildings.push(m);
+  if (p.art) facadeArt(m, p, toW);
   if (p.atlas) {
     const top = m.h * 1000;
     out.buildings.push(...atlas(toW, x + p.d * 0.25, y, top, 1));
@@ -506,7 +558,7 @@ export async function loadCity(key, w, kx, opts = {}, perf = {}) {
     }
   };
   const found = await Promise.all([done, work()]).then(([f]) => f);
-  if (found && opts.pavilion) addPavilion(out, opts.pavilion, toW);
+  if (found) for (const p of [opts.pavilion, ...(opts.extras || [])]) if (p) addPavilion(out, p, toW);
   return found ? out : null;
 }
 

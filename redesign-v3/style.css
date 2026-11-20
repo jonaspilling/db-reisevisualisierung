@@ -188,24 +188,55 @@ body:not(.mapmode) .year {
 .t-go:hover, .t-go:focus-visible { background: var(--paper); color: var(--ink); }
 .t-go[hidden] { display: none; }
 
-/* Stempel beim Einsteigen */
-.stamp {
+/* Einsteigen: ein Lesestrahl läuft über die Fahrkarte, dann wird sie gelocht (Loch mit Ring), danach füllt sich die
+   Linie zwischen Start und Ziel mit der Fahrt */
+.ticket { overflow: hidden; --p: 0; }
+.ticket::before {
+  content: "";
   position: absolute;
-  left: 50%;
-  top: 50%;
-  margin-left: -3.5rem;
-  padding: 0.3rem 0.7rem;
-  border: 2.5px solid var(--ink);
-  border-radius: 6px;
-  font: 800 1rem "Schibsted Grotesk", system-ui, sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0;
-  transform: translateY(-50%) rotate(-12deg) scale(1.8);
+  inset: 0 auto 0 0;
+  width: 22%;
+  background: linear-gradient(90deg, transparent, rgba(17, 17, 17, 0.14) 60%, rgba(17, 17, 17, 0.55) 98%, transparent);
+  transform: translateX(-110%);
   pointer-events: none;
 }
-.stamp.on { animation: stamp 420ms cubic-bezier(0.2, 1.4, 0.4, 1) forwards; }
-@keyframes stamp { to { opacity: 0.9; transform: translateY(-50%) rotate(-12deg) scale(1); } }
+.ticket.scan::before { animation: scan 700ms cubic-bezier(0.5, 0, 0.3, 1) forwards; }
+@keyframes scan { to { transform: translateX(460%); } }
+.stamp {
+  position: absolute;
+  left: 0.3rem;
+  top: 50%;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-top: -0.45rem;
+  border-radius: 50%;
+  background: var(--ink);
+  opacity: 0;
+  transform: scale(2.4);
+  pointer-events: none;
+}
+.stamp::after {
+  content: "";
+  position: absolute;
+  inset: -0.3rem;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  opacity: 0;
+}
+.stamp.on { animation: punch 380ms 560ms cubic-bezier(0.2, 1.5, 0.4, 1) forwards; }
+.stamp.on::after { animation: ring 700ms 700ms ease-out forwards; }
+@keyframes punch { to { opacity: 1; transform: scale(1); } }
+@keyframes ring { from { opacity: 0.9; transform: scale(0.6); } to { opacity: 0; transform: scale(2.6); } }
+.t-line::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1.5px;
+  height: 4px;
+  width: calc(var(--p) * 100%);
+  background: var(--ink);
+  border-radius: 2px;
+}
 
 /* 16 Fahrten als Punkte */
 .dots {

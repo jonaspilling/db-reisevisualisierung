@@ -262,9 +262,15 @@ const SPOT = {
   // hips = Walmdächer am Empfangsgebäude, lanterns = Oberlicht-Aufbauten auf flachem Hallendach
   "Frankfurt(Main)Hbf": {
     c: [-20, 20], r: 230, cam: [168, -12], door: [92, -12], city: "Frankfurt am Main", rise: 0.48,
-    boost: [{ c: [38, 40], r: 12, h: 27, roof: 2, rh: 6 }, { c: [80, -60], r: 45, h: 24 }],
+    boost: [{ c: [38, 40], r: 12, h: 27, roof: 2, rh: 6 }, { c: [78, -77], r: 25, h: 30, roof: 2, rh: 7 }, { c: [80, -60], r: 45, h: 24 }],
     // Mittelbau mit Giebel über dem Haupteingang, darauf Atlas mit der Weltkugel (wie am echten Empfangsgebäude)
-    pavilion: { c: [84, -12], w: 38, d: 20, h: 38, atlas: true },
+    pavilion: { c: [84, -12], w: 44, d: 20, h: 40, atlas: true, art: true },
+    // Nordflügel und zwei Türme an den Enden der Fassade
+    extras: [
+      { c: [72, 46], w: 22, d: 16, h: 30, rs: 2, rh: 7 },
+      { c: [90, -72], w: 9, d: 9, h: 46, rs: 3, rh: 9 },
+      { c: [82, 56], w: 9, d: 9, h: 42, rs: 3, rh: 8 },
+    ],
   },
   "Köln Hbf": { c: [-10, 10], r: 200, cam: [-98, -112], door: [-32, -58], city: "Köln", rise: 0.38 },
   "München Hbf": { c: [40, 0], r: 200, rect: [-125, -105, 206, 100], all: true, cam: [258, 64], door: [198, 56], city: "München", halls: false, lanterns: true },
@@ -349,6 +355,7 @@ let epoch = 0;
 const run = (steps, extra = {}) => new Promise((res) => {
   const my = epoch;
   anim = { t0: performance.now(), prog: 0, steps, ...extra, done1: () => res(my === epoch) };
+  el.tip.hidden = true; // der Hinweis "Klick: einsteigen" gehört zum ruhigen Blick
   need();
 });
 function interrupt() {
@@ -550,7 +557,12 @@ function ui() {
   if (appliedDpr && curDpr() !== appliedDpr) resize(); // Wechsel zwischen Übersicht (scharf) und Bahnhofsansicht (sparsam)
   el.mapBtn.textContent = mode === "map" ? "Zurück" : "Übersicht";
   el.ticket.classList.toggle("away", mode === "map");
-  if (mode !== "travel") el.stampEl.classList.remove("on");
+  if (mode !== "travel") {
+    el.stampEl.classList.remove("on");
+    el.ticket.classList.remove("scan");
+    el.ticket.style.setProperty("--p", "0");
+  }
+  if (mode !== "stand") el.tip.hidden = true;
   const t = trips[leg];
   const arrivedLine = arrivedTrip
     ? `<p class="t-arr">Angekommen in ${nice(arrivedTrip.p.ziel)} · ${arrivedTrip.p.ankunft} Uhr · ${nf(arrivedTrip.km)} km in ${hm(arrivedTrip.minutes)}</p>`
@@ -652,6 +664,8 @@ function playTrip(i) {
   } else jumpTo(i);
 }
 function stampTicket() {
+  el.tip.hidden = true;
+  el.ticket.classList.add("scan"); // Lesestrahl läuft über die Karte, dann sitzt das Loch (siehe style.css)
   el.stampEl.classList.add("on");
   el.go.hidden = true;
 }
@@ -660,6 +674,7 @@ let lastLive = "";
 function liveTicket() {
   if (!anim || !anim.trip) return;
   const t = anim.trip, k = anim.prog;
+  el.ticket.style.setProperty("--p", k.toFixed(4)); // die Linie auf der Karte füllt sich mit der Fahrt
   const now = new Date(t.t0 + (t.t1 - t.t0) * k);
   const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const key = time + "|" + Math.round(t.km * k);
@@ -1158,8 +1173,8 @@ function drawFace(b, f, alpha, detail, dash) {
     const [a, bb, , d] = f.i;
     const wpx = Math.hypot(S[2 * bb] - S[2 * a], S[2 * bb + 1] - S[2 * a + 1]);
     const hpx = Math.hypot(S[2 * d] - S[2 * a], S[2 * d + 1] - S[2 * a + 1]);
-    if (Q.windows && (Q.windows === 2 || station) && wpx > 36 && hpx > 22 && f.len > 4 && f.wh > 4) drawWindows(b, f, alpha, station);
-    else if (Q.floors && b.floors > 1 && hpx > 10) drawFloors(b, f, alpha, station);
+    if (!f.plain && Q.windows && (Q.windows === 2 || station) && wpx > 36 && hpx > 22 && f.len > 4 && f.wh > 4) drawWindows(b, f, alpha, station);
+    else if (!f.plain && Q.floors && b.floors > 1 && hpx > 10) drawFloors(b, f, alpha, station);
   } else if (detail && station && Q.windows && f.kind === 1 && !f.lines && f.i.length === 4) drawRoofTiles(b, f, alpha);
 }
 function drawFloors(b, f, alpha, station) {
