@@ -261,25 +261,28 @@ const SPOT = {
   // Dächer nach dem echten Vorbild: rise = Bogenhöhe der Hallen (Anteil der Breite), halls = Bogenhallen ja/nein,
   // hips = Walmdächer am Empfangsgebäude, lanterns = Oberlicht-Aufbauten auf flachem Hallendach
   "Frankfurt(Main)Hbf": {
-    c: [-20, 20], r: 230, cam: [168, -12], door: [92, -12], city: "Frankfurt am Main", rise: 0.48,
-    boost: [{ c: [38, 40], r: 12, h: 27, roof: 2, rh: 6 }, { c: [78, -77], r: 25, h: 30, roof: 2, rh: 7 }, { c: [80, -60], r: 45, h: 24 }],
-    // Mittelbau mit Giebel über dem Haupteingang, darauf Atlas mit der Weltkugel (wie am echten Empfangsgebäude)
-    pavilion: { c: [84, -12], w: 44, d: 20, h: 40, atlas: true, art: true },
-    // Nordflügel und zwei Türme an den Enden der Fassade
+    // Die Halle und die Gleise laufen in den Daten um 31,7° gedreht (Richtung ENE); das Empfangsgebäude steht quer dazu am
+    // Ostende, sein Mittelbau (u = 92 m vor dem Bezugspunkt) liegt auf der Mittelachse der drei großen Hallen (v ≈ 15 m).
+    c: [-20, 20], r: 230, cam: [138, 103], door: [71, 62], city: "Frankfurt am Main", rise: 0.48,
+    boost: [{ c: [38, 40], r: 12, h: 27, roof: 2, rh: 6 }, { c: [80, -60], r: 45, h: 24 }],
+    // Mittelbau mit Giebel, Bogenfenster und Uhr, darauf Atlas mit der Weltkugel (wie am echten Empfangsgebäude)
+    pavilion: { uv: [81, 15], rot: 31.7, w: 48, d: 22, h: 42, atlas: true, art: true },
+    // Eckpavillons an den Enden der Fassade und zwei Türme
     extras: [
-      { c: [72, 46], w: 22, d: 16, h: 30, rs: 2, rh: 7 },
-      { c: [90, -72], w: 9, d: 9, h: 46, rs: 3, rh: 9 },
-      { c: [82, 56], w: 9, d: 9, h: 42, rs: 3, rh: 8 },
+      { uv: [56, -85], rot: 31.7, w: 26, d: 18, h: 34, rs: 2, rh: 8 },
+      { uv: [58, 102], rot: 31.7, w: 26, d: 18, h: 34, rs: 2, rh: 8 },
+      { uv: [48, -101], rot: 31.7, w: 9, d: 9, h: 48, rs: 3, rh: 10 },
+      { uv: [50, 117], rot: 31.7, w: 9, d: 9, h: 46, rs: 3, rh: 9 },
     ],
   },
-  "Köln Hbf": { c: [-10, 10], r: 200, cam: [-98, -112], door: [-32, -58], city: "Köln", rise: 0.38 },
+  "Köln Hbf": { through: true, c: [-10, 10], r: 200, cam: [-98, -112], door: [-32, -58], city: "Köln", rise: 0.38 },
   "München Hbf": { c: [40, 0], r: 200, rect: [-125, -105, 206, 100], all: true, cam: [258, 64], door: [198, 56], city: "München", halls: false, lanterns: true },
-  "Berlin Südkreuz": { c: [25, 60], r: 175, all: true, cam: [150, -64], door: [66, -26], city: "Berlin", halls: false, hips: false },
-  "Augsburg Hbf": { c: [35, 5], r: 120, cam: [131, 41], door: [69, 8], city: "Augsburg", halls: false },
-  Bamberg: { c: [-20, -30], r: 70, all: true, cam: [-112, -40], door: [-50, -38], city: "Bamberg", halls: false },
-  "Innsbruck Hbf": { c: [-35, -20], r: 110, all: true, cam: [-140, -33], door: [-59, -31], city: "Innsbruck · Österreich", halls: false, hips: false },
+  "Berlin Südkreuz": { through: true, c: [25, 60], r: 175, all: true, cam: [150, -64], door: [66, -26], city: "Berlin", halls: false, hips: false },
+  "Augsburg Hbf": { through: true, c: [35, 5], r: 120, cam: [131, 41], door: [69, 8], city: "Augsburg", halls: false },
+  Bamberg: { through: true, c: [-20, -30], r: 70, all: true, cam: [-112, -40], door: [-50, -38], city: "Bamberg", halls: false },
+  "Innsbruck Hbf": { through: true, c: [-35, -20], r: 110, all: true, cam: [-140, -33], door: [-59, -31], city: "Innsbruck · Österreich", halls: false, hips: false },
   // Lille Europe (nicht Flandres): Bahnhof laut OSM um (+100, +350); Blick von Westen über den Vorplatz
-  "Lille Europe": { c: [110, 360], r: 130, all: true, cam: [-90, 330], door: [40, 350], city: "Lille · Frankreich", halls: false, hips: false },
+  "Lille Europe": { through: true, c: [110, 360], r: 130, all: true, cam: [-90, 330], door: [40, 350], city: "Lille · Frankreich", halls: false, hips: false },
 };
 
 function ensureCity(s) {
@@ -408,7 +411,11 @@ async function ride(t) {
   const ready = ensureCity(t.to);
   const L = t.len;
   // Abfahrt = Spiegelbild der Ankunft (gleiche Zeiten, gleiche Bewegung, rückwärts gedacht)
-  const s0 = 0.17, s1 = s0 + 0.57, s2 = s1 + 1.0;
+  // Kopfbahnhöfe (Frankfurt, München): der Zug steht mit der Spitze am Gleisende. Durchgangsbahnhöfe (through): der Zug
+  // hält mit seiner Mitte am Bahnhof, also steht er bei der Abfahrt und Ankunft eine halbe Zuglänge um den Stationspunkt.
+  const trainLen = (ICE.length * (CAR + GAP) - GAP) / 1000; // km
+  const thruFrom = !!SPOT[t.p.start]?.through, thruTo = !!SPOT[t.p.ziel]?.through;
+  const s0 = thruFrom ? trainLen / 2 : 0.17, s1 = s0 + 0.57, s2 = s1 + 1.0;
   const ex = { trip: t, train: s0, prog: s0 / L };
   // zum Zug schwenken
   if (!(await run([{ dur: 0.9, from: { ...cam }, to: followView(t, s0) }], ex))) return false;
@@ -423,12 +430,13 @@ async function ride(t) {
   await ready;
   reveal = { s: t.to, t0: performance.now() - 6000 };
   // Hereinzoomen, während der Zug schon auf das Ziel zufährt, dann langsam einfahren
-  const sC = L - 0.6;
+  const sEnd = thruTo ? L + trainLen / 2 : L - 0.03; // Position der Zugspitze beim Halt
+  const sC = Math.max(sEnd - 0.57, sB + 0.05);
   const C1 = 2.8;
   if (!(await run([{ dur: C1, dyn: (k) => { const s = sB + (sC - sB) * k; anim.train = s; anim.prog = s / L; return camTween(fr, followView(t, s), 1 - (1 - k) ** 1.6); } }], { ...ex, train: sB, prog: sB / L }))) return false;
-  if (!(await run([{ dur: 2.6, dyn: (k) => { const s = sC + 0.57 * (1 - (1 - k) ** 2.4); anim.train = s; anim.prog = Math.min(1, s / L); return followView(t, s); } }], { ...ex, train: sC, prog: sC / L }))) return false;
+  if (!(await run([{ dur: 2.6, dyn: (k) => { const s = sC + (sEnd - sC) * (1 - (1 - k) ** 2.4); anim.train = s; anim.prog = Math.min(1, s / L); return followView(t, s); } }], { ...ex, train: sC, prog: sC / L }))) return false;
   reveal = { s: t.to, t0: performance.now() - 300 };
-  if (!(await run([{ dur: 1.4, from: { ...cam }, to: modelView(t.to) }], { ...ex, train: L - 0.03, prog: 1 }))) return false;
+  if (!(await run([{ dur: 1.4, from: { ...cam }, to: modelView(t.to) }], { ...ex, train: sEnd, prog: 1 }))) return false;
   anim = null;
   return true;
 }
@@ -1173,9 +1181,9 @@ function drawFace(b, f, alpha, detail, dash) {
     const [a, bb, , d] = f.i;
     const wpx = Math.hypot(S[2 * bb] - S[2 * a], S[2 * bb + 1] - S[2 * a + 1]);
     const hpx = Math.hypot(S[2 * d] - S[2 * a], S[2 * d + 1] - S[2 * a + 1]);
-    if (!f.plain && Q.windows && (Q.windows === 2 || station) && wpx > 36 && hpx > 22 && f.len > 4 && f.wh > 4) drawWindows(b, f, alpha, station);
+    if (!f.plain && (station || Q.windows === 2) && wpx > 36 && hpx > 22 && f.len > 4 && f.wh > 4) drawWindows(b, f, alpha, station);
     else if (!f.plain && Q.floors && b.floors > 1 && hpx > 10) drawFloors(b, f, alpha, station);
-  } else if (detail && station && Q.windows && f.kind === 1 && !f.lines && f.i.length === 4) drawRoofTiles(b, f, alpha);
+  } else if (detail && station && f.kind === 1 && !f.lines && f.i.length === 4) drawRoofTiles(b, f, alpha);
 }
 function drawFloors(b, f, alpha, station) {
   const S = b._S, [a, bb, c, d] = f.i, nfl = Math.min(b.floors, 40);

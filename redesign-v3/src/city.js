@@ -348,53 +348,58 @@ function addLines(m, face, segs, toW) {
   m.V = V;
   face.lines = (face.lines || []).concat(lines);
 }
+// Bezugssystem eines Pavillons: u zeigt aus der Fassade heraus (Richtung der Gleisachse), v läuft entlang der Fassade.
+// Angabe entweder als c (lokale Meter) oder als uv im gedrehten System (rot in Grad gegen den Uhrzeigersinn ab Osten).
+function frameOf(p) {
+  const th = ((p.rot || 0) * Math.PI) / 180, U = [Math.cos(th), Math.sin(th)], V = [-Math.sin(th), Math.cos(th)];
+  const c = p.uv ? [p.uv[0] * U[0] + p.uv[1] * V[0], p.uv[0] * U[1] + p.uv[1] * V[1]] : p.c;
+  return { c, U, V, at: (du, dv) => [c[0] + du * U[0] + dv * V[0], c[1] + du * U[1] + dv * V[1]] };
+}
 // Mittelbau des Frankfurter Hauptbahnhofs: Bogenfenster mit Sprossen, drei Portale, Pilaster, Kranzgesims, Uhr im Giebel
-function facadeArt(m, p, toW) {
-  const [x, yc] = p.c, xe = x + p.d / 2, X = xe + 0.15, y0 = yc - p.w / 2, y1 = yc + p.w / 2;
-  const wall = [], gable = [];
-  const seg = (list, a, za, b, zb) => list.push([X, a, za, X, b, zb]);
+function facadeArt(m, p, fr, toW) {
+  const wall = [], gable = [], dF = p.d / 2 + 0.15;
+  const seg = (list, a, za, b, zb) => { const [x1, y1] = fr.at(dF, a), [x2, y2] = fr.at(dF, b); list.push([x1, y1, za, x2, y2, zb]); };
   const arc = (list, cy, cz, r, a0, a1, n = 14) => {
     let py = cy + r * Math.cos(a0), pz = cz + r * Math.sin(a0);
     for (let k = 1; k <= n; k++) { const a = a0 + ((a1 - a0) * k) / n, qy = cy + r * Math.cos(a), qz = cz + r * Math.sin(a); seg(list, py, pz, qy, qz); py = qy; pz = qz; }
   };
-  const ze = p.h - Math.min(12, p.w * 0.35); // Traufhöhe
-  const zs = 17, r = 7.5;
-  // Bogenfenster
+  const hw = p.w / 2, ze = p.h - Math.min(12, p.w * 0.35); // Traufhöhe
+  const zs = 17, r = 7.5, yc = 0;
   for (const [rr, zb] of [[r, 5.5], [r + 1.3, 4.8]]) { seg(wall, yc - rr, zb, yc - rr, zs); seg(wall, yc + rr, zb, yc + rr, zs); arc(wall, yc, zs, rr, 0, Math.PI); }
   seg(wall, yc - r - 1.3, 4.8, yc + r + 1.3, 4.8);
   for (const dy of [-2.5, 0, 2.5]) seg(wall, yc + dy, 5.5, yc + dy, zs + Math.sqrt(r * r - dy * dy));
   for (const z of [9.5, 13.5]) seg(wall, yc - r, z, yc + r, z);
   for (const a of [Math.PI / 6, Math.PI / 3, (2 * Math.PI) / 3, (5 * Math.PI) / 6]) seg(wall, yc, zs, yc + r * Math.cos(a), zs + r * Math.sin(a));
-  // drei Portale im Erdgeschoss
   for (const cy of [yc - 11, yc, yc + 11]) { seg(wall, cy - 2.2, 0, cy - 2.2, 2.2); seg(wall, cy + 2.2, 0, cy + 2.2, 2.2); arc(wall, cy, 2.2, 2.2, 0, Math.PI, 8); seg(wall, cy, 0, cy, 4.4); }
-  // Pilaster und Kranzgesims
-  for (const off of [-19.5, -14, 14, 19.5]) { if (Math.abs(off) > p.w / 2 - 1) continue; seg(wall, yc + off, 0, yc + off, ze - 1.5); seg(wall, yc + off - 0.8, ze - 1.5, yc + off + 0.8, ze - 1.5); }
-  for (const z of [ze - 0.9, ze - 0.2]) seg(wall, y0, z, y1, z);
-  // Giebel: Uhr mit Ziffernstrichen und Zeigern, innen ein zweiter Giebelrand
+  for (const off of [-19.5, -14, 14, 19.5]) { if (Math.abs(off) > hw - 1) continue; seg(wall, yc + off, 0, yc + off, ze - 1.5); seg(wall, yc + off - 0.8, ze - 1.5, yc + off + 0.8, ze - 1.5); }
+  for (const z of [ze - 0.9, ze - 0.2]) seg(wall, -hw, z, hw, z);
   const zc = ze + 4.5, rc = 3.1;
   arc(gable, yc, zc, rc, 0, Math.PI * 2, 22);
   for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; seg(gable, yc + 2.5 * Math.cos(a), zc + 2.5 * Math.sin(a), yc + rc * Math.cos(a), zc + rc * Math.sin(a)); }
   seg(gable, yc, zc, yc, zc + 2.3);
   seg(gable, yc, zc, yc + 1.5 * Math.cos(-Math.PI / 6), zc + 1.5 * Math.sin(-Math.PI / 6));
-  seg(gable, y0 + 2.4, ze + 0.6, yc, p.h - 1.7);
-  seg(gable, yc, p.h - 1.7, y1 - 2.4, ze + 0.6);
-  const east = m.F.find((f) => f.kind === 0 && f.a && Math.abs(f.a[0] - (x + p.d / 2)) < 0.05 && Math.abs(f.b[0] - (x + p.d / 2)) < 0.05);
-  const tri = m.F.find((f) => f.kind === 1 && f.i.length === 3 && f.n[0] > 0.5);
-  if (east) east.plain = true; // das Fensterraster entfällt, die Fassade ist gezeichnet
-  addLines(m, east, wall, toW);
+  seg(gable, -hw + 2.4, ze + 0.6, yc, p.h - 1.7);
+  seg(gable, yc, p.h - 1.7, hw - 2.4, ze + 0.6);
+  const duOf = ([x, y]) => (x - fr.c[0]) * fr.U[0] + (y - fr.c[1]) * fr.U[1];
+  const front = m.F.find((f) => f.kind === 0 && f.a && Math.abs(duOf(f.a) - p.d / 2) < 0.1 && Math.abs(duOf(f.b) - p.d / 2) < 0.1);
+  const tri = m.F.find((f) => f.kind === 1 && f.i.length === 3 && f.n[0] * fr.U[0] + f.n[1] * fr.U[1] > 0.5);
+  if (front) front.plain = true; // das Fensterraster entfällt, die Fassade ist gezeichnet
+  addLines(m, front, wall, toW);
   addLines(m, tri, gable, toW);
 }
-// Pavillons, Flügelbauten und Türme: p = { c: [x, y], w: Breite entlang der Fassade, d: Tiefe, h: Höhe bis First/Spitze,
-// rs: Dachform (1 Giebel quer zur Fassade, 2 Walm, 3 Zelt), rh: Dachhöhe, atlas: Statuengruppe, art: Fassadenzeichnung }
+// Pavillons, Flügelbauten und Türme: p = { c oder uv, rot, w: Breite entlang der Fassade, d: Tiefe, h: Höhe bis First/Spitze,
+// rs: Dachform (1 Giebel zur Fassade, 2 Walm, 3 Zelt), rh: Dachhöhe, atlas: Statuengruppe, art: Fassadenzeichnung }
 function addPavilion(out, p, toW) {
-  const [x, y] = p.c, x0 = x - p.d / 2, x1 = x + p.d / 2, y0 = y - p.w / 2, y1 = y + p.w / 2, rs = p.rs ?? 1;
-  const m = buildMesh([p.h, 0, rs, p.rh ?? -1, -1, rs === 1 ? 1 : 0, 1, [x0, y0, x1, y0, x1, y1, x0, y1], []], toW);
+  const fr = frameOf(p), rs = p.rs ?? 1;
+  const ring = [];
+  for (const [du, dv] of [[-p.d / 2, -p.w / 2], [p.d / 2, -p.w / 2], [p.d / 2, p.w / 2], [-p.d / 2, p.w / 2]]) ring.push(...fr.at(du, dv));
+  const m = buildMesh([p.h, 0, rs, p.rh ?? -1, -1, rs === 1 ? 1 : 0, 1, ring, []], toW); // Giebel: First quer zur Fassade (Hauptachse der Fläche + 90°)
   out.buildings.push(m);
-  if (p.art) facadeArt(m, p, toW);
+  if (p.art) facadeArt(m, p, fr, toW);
   if (p.atlas) {
-    const top = m.h * 1000;
-    out.buildings.push(...atlas(toW, x + p.d * 0.25, y, top, 1));
-    for (const side of [-1, 1]) out.buildings.push(...atlas(toW, x + p.d * 0.25, y + side * p.w * 0.42, top - 1.5, 0.45)); // zwei kleinere Figuren an den Ecken
+    const top = m.h * 1000, [ax, ay] = fr.at(p.d * 0.25, 0);
+    out.buildings.push(...atlas(toW, ax, ay, top, 1));
+    for (const side of [-1, 1]) { const [bx, by] = fr.at(p.d * 0.25, side * p.w * 0.42); out.buildings.push(...atlas(toW, bx, by, top - 1.5, 0.45)); }
   }
 }
 
